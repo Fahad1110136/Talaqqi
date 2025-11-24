@@ -1,0 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    /* background-color: #0D1117; */
+}
+
+body {
+    background-color: #0D1117;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background-color: #161B22;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    height: 50px;
+    position: sticky;
+    top: 0;
+}
+
+.header h1 {
+    color: #10B981;
+}
+
+.header .nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 50px;
+}
+
+.header .nav a {
+    text-decoration: none;
+    color: #E5E7EB;
+}
+
+.header .nav a:hover {
+    color: #10B981
+}
+
+.main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.main .card {
+    margin: 15px;
+    padding: 15px;
+    background-color: #1F2937;
+    border: 10px solid #2A2F36;
+    border-radius: 10px;
+    width: 400px;
+    height: 520px;
+}
+
+.main .card h2 {
+    color: #3B82F6;
+    padding: 5px;
+}
+
+/* .main .card form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+} */
+
+.main .card .fPass {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.main .card .fPass a {
+    text-decoration: none;
+    color: #E5E7EB;
+}
+
+.main .card .formCon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.main .card .formCon form {
+    padding: 50px;
+}
+
+.main .card .formCon form input {
+    /* display: block; */
+    width: 300px;
+    height: 40px;
+    border-radius: 10px;
+    margin: 10px 0;
+    padding: 5px;
+    text-align: center;
+}
+
+.main .card .loginBtn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    /* width: 50px;
+    height: 50px; */
+}
+
+.main .card .loginBtn button {
+    background-color: #3B82F6;
+    text-decoration: none;
+    color: #E5E7EB;
+    width: 200px;
+    height: 70px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 50px;
+    border-radius: 10px;
+    border: 5px solid #30363D;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+    /* display: block; */
+}
+
+.main .loginBtn button:hover {
+    background-color: #60A5FA;
+    transform: translateY(-5px);
+}
+
+.main .card .reg h4 {
+    color: #A1A1AA;
+    padding: 5px;   
+}
+
+.main .card .reg .regBtn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    /* width: 50px;
+    height: 50px; */
+}
+
+.main .card .reg .regBtn a {
+    background-color: #3B82F6;
+    text-decoration: none;
+    color: #E5E7EB;
+    width: 190px;
+    height: 62px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 50px;
+    border-radius: 10px;
+    border: 5px solid #30363D;
+    transition: transform 0.3s ease;
+    /* display: block; */
+}
+
+.main .card .reg .regBtn a:hover {
+    background-color: #60A5FA;
+    transform: translateY(-5px);
+}
+
+.footer {
+    color: #10B981;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #161B22;
+    height: 50px;
+    margin-top: auto;
+}
