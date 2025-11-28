@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero">
+    <h1>Welcome to Talaqqi</h1>
+    <p>Learn Quran online with qualified teachers through personalized 1-on-1 sessions</p>
+    <div class="cta-buttons">
+        <a href="{{ url_for('register') }}" class="btn btn-primary">Get Started</a>
+        <a href="{{ url_for('login') }}" class="btn btn-secondary">Login</a>
+    </div>
+</div>
+
+<div class="features">
+    <div class="feature">
+        <h3>1-on-1 Learning</h3>
+        <p>Personalized attention from qualified Quran teachers</p>
+    </div>
+    <div class="feature">
+        <h3>Flexible Scheduling</h3>
+        <p>Learn at your own pace and schedule</p>
+    </div>
+    <div class="feature">
+        <h3>Progress Tracking</h3>
+        <p>Regular reviews and feedback from your teacher</p>
+    </div>
+</div>
+{% endblock %}
