@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication</title>
+    <link rel="stylesheet" href="authentication.css">
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>Talaqqi</h1>
+
+        <div class="nav">
+            <a href="homePage.html">Homepage</a>
+            <a href="authentication.html">Authentication</a>
+        </div>
+    </div>
+
+    <div class="main">
+
+        <div class="card">
+            <h2>Log In</h2>
+
+            <div class="formCon">
+                <form id="loginForm" method="post">
+                    <input type="text" id="username" name="username" placeholder="Enter your username">
+                    <span class="error" id="userError"></span>
+
+                    <input type="password" id="password" name="password" placeholder="Enter your password">
+                    <span class="error" id="passError"></span>
+                </form>
+            </div>
+
+            <div class="fPass">
+                <a href="#">Forgot password?</a>
+            </div>
+
+            <div class="loginBtn">
+                <button id="loginBtn">Log In</button>
+            </div>
+
+            <div class="reg">
+                <h4>Don’t have an account?</h4>
+                <div class="regBtn">
+                    <a href="regForm.html">Register</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="footer">
+        © 2025 Talaqqi. All rights reserved.
+    </footer>
+
+    <!-- VALIDATION SCRIPT -->
+    <script>
+        const loginBtn = document.getElementById("loginBtn");
+        const username = document.getElementById("username");
+        const password = document.getElementById("password");
+        const userError = document.getElementById("userError");
+        const passError = document.getElementById("passError");
+
+        loginBtn.addEventListener("click", function (e) {
+            let valid = true;
+            userError.textContent = "";
+            passError.textContent = "";
+
+            if (username.value.trim() === "") {
+                userError.textContent = "Username is required";
+                valid = false;
+            }
+
+            if (password.value.trim() === "") {
+                passError.textContent = "Password is required";
+                valid = false;
+            }
+
+            if (!valid) {
+                e.preventDefault();  
+            }
+        });
+    </script>
+
+</body>
+
+</html>
