@@ -1,0 +1,15 @@
+# Flask-specific
+instance/
+.webassets-cache
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+database.db
+
+# Session files
+flask_session/
+
+# Uploaded files (if any)
+uploads/
