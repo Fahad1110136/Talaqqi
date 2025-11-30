@@ -1,0 +1,2 @@
+# Factories
+"""Factory pattern implementations."""
