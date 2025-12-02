@@ -395,6 +395,32 @@ def send_message():
     return jsonify({'success': success})
 
 
+
+
+    # ===== NEW: TAJWEED ANALYSIS ROUTE =====
+@app.route('/tajweed_analysis')
+def tajweed_analysis():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Record progress for accessing tajweed analysis
+    user_id = session['user_id']
+    progress_service.record_activity(user_id, 0, 0, 'tajweed_analysis', 0)
+    
+    return render_template('tajweed_analysis.html', user_type=session['user_type'])
+
+@app.route('/redirect_to_tarteel')
+def redirect_to_tarteel():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Record that user used the tarteel redirect
+    user_id = session['user_id']
+    progress_service.record_activity(user_id, 0, 0, 'tarteel_redirect', 0)
+    
+    # Redirect to Tarteel.ai
+    return redirect('https://www.tarteel.ai/')
+
 @app.route('/add_review', methods=['POST'])
 def add_review():
     if 'user_id' not in session or session['user_type'] != 'teacher':
