@@ -15,7 +15,10 @@
                     <span>Welcome, {{ session.username }} ({{ session.user_type }})</span>
                     <a href="{{ url_for('dashboard') }}">Dashboard</a>
                     <a href="{{ url_for('mushaf') }}">Mushaf</a>
+                    <!-- ADD THIS LINE FOR TAJWEED ANALYSIS -->
+                    <a href="{{ url_for('tajweed_analysis') }}">Tajweed Analysis</a>
                     <a href="{{ url_for('logout') }}">Logout</a>
+                    
                 {% else %}
                     <a href="{{ url_for('login') }}">Login</a>
                     <a href="{{ url_for('register') }}">Register</a>
