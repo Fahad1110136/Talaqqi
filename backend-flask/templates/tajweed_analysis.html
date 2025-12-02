@@ -1,0 +1,899 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="tajweed-container">
+    <!-- Hero Section -->
+    <div class="tajweed-hero">
+        <h1>🎯 Perfect Your Tajweed with AI</h1>
+        <p class="subtitle">Master the art of Quranic recitation with intelligent feedback</p>
+        
+        <div class="progress-indicator">
+            <div class="step completed">1. Understanding Tajweed</div>
+            <div class="step active">2. Prepare for Analysis</div>
+            <div class="step">3. AI Analysis</div>
+            <div class="step">4. Improvement Plan</div>
+        </div>
+    </div>
+
+    <!-- Educational Content -->
+    <div class="educational-section">
+        <div class="section-header">
+            <h2>📚 Understanding Tajweed Rules</h2>
+            <p>Before analysis, let's understand what Tajweed means</p>
+        </div>
+        
+        <div class="tajweed-rules">
+            <div class="rule-card">
+                <div class="rule-icon">🎵</div>
+                <h3>Makhaarij al-Huroof</h3>
+                <p>The articulation points of Arabic letters. Know where each sound originates from your vocal apparatus.</p>
+                <div class="example">
+                    <strong>Example:</strong> ق (Qaf) comes from the deepest part of the throat
+                </div>
+            </div>
+            
+            <div class="rule-card">
+                <div class="rule-icon">🎼</div>
+                <h3>Sifaat al-Huroof</h3>
+                <p>The characteristics of letters including heaviness, lightness, and other qualities.</p>
+                <div class="example">
+                    <strong>Example:</strong> ظ (Dha) has the characteristic of isti'laa (elevation)
+                </div>
+            </div>
+            
+            <div class="rule-card">
+                <div class="rule-icon">🔄</div>
+                <h3>Rules of Noon & Meem</h3>
+                <p>Ikhfaa, Idghaam, Iqlab, and Idhaar rules for Noon Saakin and Tanween.</p>
+                <div class="example">
+                    <strong>Example:</strong> منْ بعد → "mim ba'd" (Idghaam with Ghunnah)
+                </div>
+            </div>
+            
+            <div class="rule-card">
+                <div class="rule-icon">⏱️</div>
+                <h3>Madd (Elongation)</h3>
+                <p>Proper elongation of vowels according to their specific counts.</p>
+                <div class="example">
+                    <strong>Example:</strong> Madd Asli (2 counts), Madd Far'i (2-6 counts)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preparation Section -->
+    <div class="preparation-section">
+        <h2>🎤 Prepare for Your Recording</h2>
+        
+        <div class="preparation-steps">
+            <div class="prep-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Find a Quiet Place</h3>
+                    <p>Choose a room with minimal background noise and echo</p>
+                </div>
+            </div>
+            
+            <div class="prep-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Use Good Equipment</h3>
+                    <p>If possible, use a headset microphone for clearer audio</p>
+                </div>
+            </div>
+            
+            <div class="prep-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Warm Up Your Voice</h3>
+                    <p>Recite a few verses softly to prepare your vocal cords</p>
+                </div>
+            </div>
+            
+            <div class="prep-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3>Choose Your Passage</h3>
+                    <p>Select a surah you're familiar with (3-5 verses recommended)</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="recording-tips">
+            <h3>📝 Recording Tips:</h3>
+            <ul>
+                <li>Recite at a moderate pace - not too fast, not too slow</li>
+                <li>Maintain proper breath control between verses</li>
+                <li>Focus on clarity of each letter</li>
+                <li>Pay attention to stops (waqf) and continuations (wasl)</li>
+                <li>Record for 30-60 seconds for best analysis</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Tarteel.ai Integration -->
+    <div class="tarteel-section">
+        <div class="tarteel-header">
+            <div class="tarteel-logo">
+                <div class="logo-icon">🤖</div>
+                <h2>Tarteel.ai Integration</h2>
+            </div>
+            <p class="tarteel-description">
+                We partner with Tarteel.ai - the world's most advanced AI for Quranic recitation analysis
+            </p>
+        </div>
+        
+        <div class="tarteel-features">
+            <div class="feature">
+                <div class="feature-icon">🎯</div>
+                <h4>Instant Feedback</h4>
+                <p>Get real-time analysis of your Tajweed errors</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <h4>Detailed Reports</h4>
+                <p>Comprehensive breakdown of your recitation quality</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">📈</div>
+                <h4>Progress Tracking</h4>
+                <p>Monitor your improvement over time</p>
+            </div>
+            
+            <div class="feature">
+                <div class="feature-icon">👨‍🏫</div>
+                <h4>Personalized Tips</h4>
+                <p>Receive customized advice for improvement</p>
+            </div>
+        </div>
+        
+        <div class="tarteel-action">
+            <div class="action-card">
+                <h3>Ready to Analyze Your Recitation?</h3>
+                <p class="action-description">
+                    Click below to be redirected to Tarteel.ai where you can:
+                </p>
+                <ul class="action-list">
+                    <li>Record your recitation directly in the browser</li>
+                    <li>Get instant AI-powered feedback on Tajweed</li>
+                    <li>View detailed analysis of your pronunciation</li>
+                    <li>Compare with correct recitations</li>
+                    <li>Track your progress over time</li>
+                </ul>
+                
+                <div class="action-buttons">
+                    <a href="{{ url_for('redirect_to_tarteel') }}" 
+                       target="_blank" 
+                       class="tarteel-btn">
+                        🚀 Go to Tarteel.ai for Analysis
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="secondary-btn">
+                        ⏪ Return to Dashboard
+                    </a>
+                </div>
+                
+                <div class="note">
+                    <p><strong>Note:</strong> You will be redirected to Tarteel.ai, our trusted partner for Quranic recitation analysis.</p>
+                    <p>Your analysis results will be automatically saved to your progress report here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Stories -->
+    <div class="testimonials">
+        <h2>🌟 Success Stories</h2>
+        <div class="testimonial-cards">
+            <div class="testimonial">
+                <div class="quote">"</div>
+                <p>Using Tarteel.ai through this platform helped me identify specific makharij errors I was making for years!</p>
+                <div class="author">- Ahmed, Student</div>
+            </div>
+            
+            <div class="testimonial">
+                <div class="quote">"</div>
+                <p>As a teacher, I recommend this to all my students. The AI analysis complements traditional learning perfectly.</p>
+                <div class="author">- Ustadh Yusuf, Teacher</div>
+            </div>
+            
+            <div class="testimonial">
+                <div class="quote">"</div>
+                <p>Improved my recitation accuracy by 40% in just 3 months with regular practice and AI feedback.</p>
+                <div class="author">- Fatima, Hafizah</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAQ Section -->
+    <div class="faq-section">
+        <h2>❓ Frequently Asked Questions</h2>
+        
+        <div class="faq-item">
+            <div class="faq-question">
+                <h3>Is Tarteel.ai free to use?</h3>
+                <span class="toggle-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                <p>Yes! Tarteel.ai offers free analysis for limited recordings. For unlimited use, they offer premium plans.</p>
+            </div>
+        </div>
+        
+        <div class="faq-item">
+            <div class="faq-question">
+                <h3>How accurate is the AI analysis?</h3>
+                <span class="toggle-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                <p>Tarteel.ai uses state-of-the-art machine learning models trained on thousands of expert recitations, achieving over 95% accuracy in identifying common Tajweed errors.</p>
+            </div>
+        </div>
+        
+        <div class="faq-item">
+            <div class="faq-question">
+                <h3>Can I use this on mobile?</h3>
+                <span class="toggle-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                <p>Absolutely! Tarteel.ai works perfectly on mobile browsers. You can record your recitation directly from your phone.</p>
+            </div>
+        </div>
+        
+        <div class="faq-item">
+            <div class="faq-question">
+                <h3>Will my recordings be saved?</h3>
+                <span class="toggle-icon">+</span>
+            </div>
+            <div class="faq-answer">
+                <p>Your recordings are processed anonymously on Tarteel.ai's servers. You can choose to save them to your account for progress tracking.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Tajweed Analysis Page Styles */
+.tajweed-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Hero Section */
+.tajweed-hero {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: linear-gradient(135deg, #1a237e, #4a148c);
+    color: white;
+    border-radius: 20px;
+    margin-bottom: 3rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.tajweed-hero h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin: 0 auto 2rem;
+}
+
+/* Progress Indicator */
+.progress-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 3rem;
+    flex-wrap: wrap;
+}
+
+.step {
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    font-weight: 600;
+    position: relative;
+    transition: all 0.3s;
+}
+
+.step.completed {
+    background: #4CAF50;
+    color: white;
+}
+
+.step.active {
+    background: #FF9800;
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+}
+
+.step:not(.completed):not(.active) {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Educational Section */
+.educational-section {
+    margin-bottom: 4rem;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.section-header h2 {
+    color: #2c3e50;
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.section-header p {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+}
+
+.tajweed-rules {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.rule-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.rule-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+}
+
+.rule-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.rule-card h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.rule-card p {
+    color: #546e7a;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.example {
+    background: #f3e5f5;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #9c27b0;
+    font-style: italic;
+}
+
+/* Preparation Section */
+.preparation-section {
+    background: #f8f9fa;
+    padding: 3rem;
+    border-radius: 20px;
+    margin-bottom: 4rem;
+}
+
+.preparation-section h2 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 3rem;
+    font-size: 2.2rem;
+}
+
+.preparation-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.prep-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+
+.step-number {
+    background: #2196F3;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.step-content h3 {
+    margin: 0 0 0.5rem 0;
+    color: #2c3e50;
+}
+
+.step-content p {
+    margin: 0;
+    color: #7f8c8d;
+}
+
+.recording-tips {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.recording-tips h3 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+}
+
+.recording-tips ul {
+    list-style: none;
+    padding: 0;
+}
+
+.recording-tips li {
+    padding: 0.8rem 0;
+    border-bottom: 1px solid #eee;
+    color: #546e7a;
+    position: relative;
+    padding-left: 2rem;
+}
+
+.recording-tips li:before {
+    content: "✓";
+    color: #4CAF50;
+    position: absolute;
+    left: 0;
+    font-weight: bold;
+}
+
+/* Tarteel Section */
+.tarteel-section {
+    margin-bottom: 4rem;
+}
+
+.tarteel-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.tarteel-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.logo-icon {
+    font-size: 3rem;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.tarteel-description {
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 1.1rem;
+    color: #666;
+}
+
+.tarteel-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.feature {
+    text-align: center;
+    padding: 2rem;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s;
+}
+
+.feature:hover {
+    transform: translateY(-5px);
+}
+
+.feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.feature h4 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.feature p {
+    color: #7f8c8d;
+    margin: 0;
+}
+
+.tarteel-action {
+    background: linear-gradient(135deg, #1a237e, #311b92);
+    border-radius: 20px;
+    padding: 3rem;
+    color: white;
+}
+
+.action-card {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.action-card h3 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.action-description {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 2rem;
+}
+
+.action-list {
+    text-align: left;
+    max-width: 600px;
+    margin: 0 auto 3rem;
+    list-style: none;
+    padding: 0;
+}
+
+.action-list li {
+    padding: 0.8rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    padding-left: 2rem;
+}
+
+.action-list li:before {
+    content: "✨";
+    position: absolute;
+    left: 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+}
+
+.tarteel-btn {
+    background: #FF9800;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    transition: all 0.3s;
+    display: inline-block;
+}
+
+.tarteel-btn:hover {
+    background: #F57C00;
+    transform: scale(1.05);
+    box-shadow: 0 10px 20px rgba(255, 152, 0, 0.3);
+}
+
+.secondary-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    text-decoration: none;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s;
+    display: inline-block;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.note {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    border-radius: 10px;
+    text-align: left;
+    font-size: 0.9rem;
+}
+
+/* Testimonials */
+.testimonials {
+    margin-bottom: 4rem;
+}
+
+.testimonials h2 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 3rem;
+    font-size: 2.2rem;
+}
+
+.testimonial-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.testimonial {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+.quote {
+    font-size: 4rem;
+    color: #e0e0e0;
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    font-family: Georgia, serif;
+}
+
+.testimonial p {
+    font-style: italic;
+    color: #546e7a;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.author {
+    color: #7f8c8d;
+    font-weight: bold;
+    text-align: right;
+}
+
+/* FAQ Section */
+.faq-section {
+    background: #f8f9fa;
+    padding: 3rem;
+    border-radius: 20px;
+}
+
+.faq-section h2 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 3rem;
+    font-size: 2.2rem;
+}
+
+.faq-item {
+    background: white;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+}
+
+.faq-question {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.faq-question:hover {
+    background: #f5f5f5;
+}
+
+.faq-question h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.2rem;
+}
+
+.toggle-icon {
+    font-size: 1.5rem;
+    color: #7f8c8d;
+    transition: transform 0.3s;
+}
+
+.faq-answer {
+    padding: 0 1.5rem;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s;
+}
+
+.faq-item.active .faq-answer {
+    padding: 0 1.5rem 1.5rem;
+    max-height: 500px;
+}
+
+.faq-item.active .toggle-icon {
+    transform: rotate(45deg);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .tajweed-container {
+        padding: 1rem;
+    }
+    
+    .tajweed-hero {
+        padding: 2rem 1rem;
+    }
+    
+    .tajweed-hero h1 {
+        font-size: 2rem;
+    }
+    
+    .progress-indicator {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .tajweed-rules,
+    .preparation-steps,
+    .tarteel-features,
+    .testimonial-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .preparation-section,
+    .faq-section {
+        padding: 2rem 1rem;
+    }
+    
+    .tarteel-action {
+        padding: 2rem 1rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .tarteel-btn,
+    .secondary-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .step {
+        padding: 0.8rem 1.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .rule-card,
+    .feature,
+    .testimonial {
+        padding: 1.5rem;
+    }
+    
+    .action-list li {
+        padding-left: 1.5rem;
+        font-size: 0.9rem;
+    }
+}
+</style>
+
+<script>
+// FAQ toggle functionality
+document.querySelectorAll('.faq-question').forEach(question => {
+    question.addEventListener('click', () => {
+        const item = question.parentElement;
+        item.classList.toggle('active');
+        
+        // Close other open items (optional)
+        document.querySelectorAll('.faq-item').forEach(otherItem => {
+            if (otherItem !== item && otherItem.classList.contains('active')) {
+                otherItem.classList.remove('active');
+            }
+        });
+    });
+});
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        if (targetId !== '#') {
+            const targetElement = document.querySelector(targetId);
+            if (targetElement) {
+                targetElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        }
+    });
+});
+
+// Track when user views the page
+document.addEventListener('DOMContentLoaded', function() {
+    // Record that user viewed the tajweed analysis page
+    fetch('/record_progress', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            surah_number: 0,
+            verse_number: 0,
+            action_type: 'tajweed_page_view',
+            duration: 0
+        })
+    }).catch(console.error);
+});
+
+// Countdown for automatic redirect (optional)
+let redirectTimer;
+let countdown = 10;
+
+function startRedirectCountdown() {
+    const redirectBtn = document.querySelector('.tarteel-btn');
+    const originalText = redirectBtn.textContent;
+    
+    redirectBtn.textContent = `${originalText} (Redirecting in ${countdown}...)`;
+    
+    redirectTimer = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+            clearInterval(redirectTimer);
+            window.open('https://www.tarteel.ai/', '_blank');
+            redirectBtn.textContent = originalText;
+        } else {
+            redirectBtn.textContent = `${originalText} (Redirecting in ${countdown}...)`;
+        }
+    }, 1000);
+}
+
+// Optional: Uncomment to enable auto-redirect countdown
+// document.querySelector('.tarteel-btn').addEventListener('mouseenter', startRedirectCountdown);
+// document.querySelector('.tarteel-btn').addEventListener('mouseleave', () => {
+//     clearInterval(redirectTimer);
+//     countdown = 10;
+//     const btn = document.querySelector('.tarteel-btn');
+//     btn.textContent = btn.textContent.replace(/\(Redirecting in \d+\.\.\.\)/, '').trim();
+// });
+</script>
+{% endblock %}
