@@ -1,7 +1,10 @@
 import './style.css';
 
-import firebase from 'firebase/app';
-import 'firebase/firestore';
+
+
+// With compat imports:
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1kemjxzzt5DkyFII8vJP8be7g6_meylc",
@@ -16,21 +19,93 @@ const firebaseConfig = {
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
+// expose for debugging
+window.firebase = firebase;
 const firestore = firebase.firestore();
+window.firestore = firestore;
+console.log('Firestore initialized for project:', firebaseConfig.projectId);
 
 const servers = {
   iceServers: [
-    {
-      urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'],
-    },
+    { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
   ],
   iceCandidatePoolSize: 10,
 };
 
-// Global State
-const pc = new RTCPeerConnection(servers);
+let pc = null;
 let localStream = null;
 let remoteStream = null;
+let callSnapshotUnsub = null;
+let offerCandidatesUnsub = null;
+let answerCandidatesUnsub = null;
+let currentCallDoc = null;
+
+function detachSnapshotListeners() {
+  callSnapshotUnsub?.();
+  callSnapshotUnsub = null;
+  offerCandidatesUnsub?.();
+  offerCandidatesUnsub = null;
+  answerCandidatesUnsub?.();
+  answerCandidatesUnsub = null;
+}
+
+async function deleteCollection(collectionRef) {
+  const snapshot = await collectionRef.get();
+  await Promise.all(snapshot.docs.map((doc) => doc.ref.delete()));
+}
+
+async function cleanupCallDocs() {
+  if (!currentCallDoc) return;
+  try {
+    await deleteCollection(currentCallDoc.collection('offerCandidates'));
+    await deleteCollection(currentCallDoc.collection('answerCandidates'));
+    await currentCallDoc.delete();
+  } catch (err) {
+    console.warn('Failed to clean call docs', err);
+  } finally {
+    currentCallDoc = null;
+  }
+}
+
+function setupPeerConnection() {
+  if (pc) {
+    pc.onicecandidate = null;
+    pc.ontrack = null;
+    try { pc.close(); } catch (err) { console.warn(err); }
+  }
+  pc = new RTCPeerConnection(servers);
+  pc.ontrack = (event) => {
+    event.streams[0].getTracks().forEach((track) => {
+      remoteStream?.addTrack(track);
+    });
+  };
+  localStream?.getTracks().forEach((track) => pc.addTrack(track, localStream));
+}
+
+async function hangUp() {
+  detachSnapshotListeners();
+
+  if (pc) {
+    pc.onicecandidate = null;
+    try { pc.close(); } catch (err) { console.warn(err); }
+    pc = null;
+  }
+
+  await cleanupCallDocs();
+
+  localStream?.getTracks().forEach((track) => track.stop());
+  remoteStream?.getTracks().forEach((track) => track.stop());
+  localStream = null;
+  remoteStream = null;
+  webcamVideo.srcObject = null;
+  remoteVideo.srcObject = null;
+
+  callInput.value = '';
+  hangupButton.disabled = true;
+  callButton.disabled = true;
+  answerButton.disabled = true;
+  webcamButton.disabled = false;
+}
 
 // HTML elements
 const webcamButton = document.getElementById('webcamButton');
@@ -44,109 +119,131 @@ const hangupButton = document.getElementById('hangupButton');
 // 1. Setup media sources
 
 webcamButton.onclick = async () => {
-  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  remoteStream = new MediaStream();
+  try {
+    if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
+      alert('This browser does not allow camera access here. Use HTTPS or localhost.');
+      return;
+    }
 
-  // Push tracks from local stream to peer connection
-  localStream.getTracks().forEach((track) => {
-    pc.addTrack(track, localStream);
-  });
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    remoteStream = new MediaStream();
 
-  // Pull tracks from remote stream, add to video stream
-  pc.ontrack = (event) => {
-    event.streams[0].getTracks().forEach((track) => {
-      remoteStream.addTrack(track);
-    });
-  };
+    webcamVideo.srcObject = localStream;
+    remoteVideo.srcObject = remoteStream;
 
-  webcamVideo.srcObject = localStream;
-  remoteVideo.srcObject = remoteStream;
+    setupPeerConnection();
 
-  callButton.disabled = false;
-  answerButton.disabled = false;
-  webcamButton.disabled = true;
+    callButton.disabled = false;
+    answerButton.disabled = false;
+    webcamButton.disabled = true;
+  } catch (err) {
+    console.error('Failed to start webcam:', err);
+    alert('Cannot access camera/mic: ' + (err.message || err));
+  }
 };
 
 // 2. Create an offer
 callButton.onclick = async () => {
-  // Reference Firestore collections for signaling
-  const callDoc = firestore.collection('calls').doc();
-  const offerCandidates = callDoc.collection('offerCandidates');
-  const answerCandidates = callDoc.collection('answerCandidates');
+  if (!localStream || !pc) {
+    alert('Start the webcam first.');
+    return;
+  }
+  try {
+    const callDoc = firestore.collection('calls').doc();
+    currentCallDoc = callDoc;
+    const offerCandidates = callDoc.collection('offerCandidates');
+    const answerCandidates = callDoc.collection('answerCandidates');
 
-  callInput.value = callDoc.id;
+    callInput.value = callDoc.id;
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        offerCandidates.add(event.candidate.toJSON()).catch((err) => console.error('offer ICE add failed', err));
+      }
+    };
 
-  // Get candidates for caller, save to db
-  pc.onicecandidate = (event) => {
-    event.candidate && offerCandidates.add(event.candidate.toJSON());
-  };
+    const offerDescription = await pc.createOffer();
+    await pc.setLocalDescription(offerDescription);
+    await callDoc.set({ offer: { sdp: offerDescription.sdp, type: offerDescription.type } });
 
-  // Create offer
-  const offerDescription = await pc.createOffer();
-  await pc.setLocalDescription(offerDescription);
-
-  const offer = {
-    sdp: offerDescription.sdp,
-    type: offerDescription.type,
-  };
-
-  await callDoc.set({ offer });
-
-  // Listen for remote answer
-  callDoc.onSnapshot((snapshot) => {
-    const data = snapshot.data();
-    if (!pc.currentRemoteDescription && data?.answer) {
-      const answerDescription = new RTCSessionDescription(data.answer);
-      pc.setRemoteDescription(answerDescription);
-    }
-  });
-
-  // When answered, add candidate to peer connection
-  answerCandidates.onSnapshot((snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      if (change.type === 'added') {
-        const candidate = new RTCIceCandidate(change.doc.data());
-        pc.addIceCandidate(candidate);
+    callSnapshotUnsub = callDoc.onSnapshot((snapshot) => {
+      const data = snapshot.data();
+      if (data?.answer && !pc.currentRemoteDescription) {
+        pc.setRemoteDescription(new RTCSessionDescription(data.answer)).catch((err) => console.error('setRemoteDescription failed', err));
       }
     });
-  });
 
-  hangupButton.disabled = false;
+    answerCandidatesUnsub = answerCandidates.onSnapshot((snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch((err) => console.error('addIceCandidate failed', err));
+        }
+      });
+    });
+
+    hangupButton.disabled = false;
+    callButton.disabled = true;
+    answerButton.disabled = true;
+  } catch (err) {
+    console.error('Failed to create call:', err);
+    alert('Create call failed: ' + (err.message || err));
+  }
 };
 
 // 3. Answer the call with the unique ID
 answerButton.onclick = async () => {
-  const callId = callInput.value;
-  const callDoc = firestore.collection('calls').doc(callId);
-  const answerCandidates = callDoc.collection('answerCandidates');
-  const offerCandidates = callDoc.collection('offerCandidates');
+  if (!localStream || !pc) {
+    alert('Start the webcam first.');
+    return;
+  }
+  const callId = callInput.value.trim();
+  if (!callId) {
+    alert('Enter a call ID.');
+    return;
+  }
+  try {
+    const callDoc = firestore.collection('calls').doc(callId);
+    const callSnap = await callDoc.get();
+    if (!callSnap.exists) {
+      alert(`Call not found (${callId})`);
+      return;
+    }
+    const callData = callSnap.data();
+    if (!callData?.offer) {
+      alert('Call has no offer yet.');
+      return;
+    }
 
-  pc.onicecandidate = (event) => {
-    event.candidate && answerCandidates.add(event.candidate.toJSON());
-  };
+    currentCallDoc = callDoc;
+    const answerCandidates = callDoc.collection('answerCandidates');
+    const offerCandidates = callDoc.collection('offerCandidates');
 
-  const callData = (await callDoc.get()).data();
-
-  const offerDescription = callData.offer;
-  await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
-
-  const answerDescription = await pc.createAnswer();
-  await pc.setLocalDescription(answerDescription);
-
-  const answer = {
-    type: answerDescription.type,
-    sdp: answerDescription.sdp,
-  };
-
-  await callDoc.update({ answer });
-
-  offerCandidates.onSnapshot((snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      console.log(change);
-      if (change.type === 'added') {
-        let data = change.doc.data();
-        pc.addIceCandidate(new RTCIceCandidate(data));
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        answerCandidates.add(event.candidate.toJSON()).catch((err) => console.error('answer ICE add failed', err));
       }
+    };
+
+    await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
+    const answerDescription = await pc.createAnswer();
+    await pc.setLocalDescription(answerDescription);
+    await callDoc.update({ answer: { type: answerDescription.type, sdp: answerDescription.sdp } });
+
+    offerCandidatesUnsub = offerCandidates.onSnapshot((snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          pc.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch((err) => console.error('addIceCandidate failed', err));
+        }
+      });
     });
-  });
+
+    hangupButton.disabled = false;
+    callButton.disabled = true;
+    answerButton.disabled = true;
+  } catch (err) {
+    console.error('Error answering call:', err);
+    alert('Answer failed: ' + (err.message || err));
+  }
 };
+
+hangupButton.onclick = hangUp;
+window.addEventListener('beforeunload', hangUp);
