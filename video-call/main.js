@@ -21,6 +21,7 @@ const firestore = firebase.firestore();
 
 // --- Core abstractions -------------------------------------------------------
 
+// SRP: Handles only media capture/cleanup responsibilities.
 class MediaManager {
   constructor(localVideoEl, remoteVideoEl) {
     this.localVideoEl = localVideoEl;
@@ -51,6 +52,7 @@ class MediaManager {
   }
 }
 
+// SRP: Dedicated to peer-connection lifecycle management.
 class PeerConnectionManager {
   constructor(iceServers) {
     this.iceServers = iceServers;
@@ -83,6 +85,7 @@ class PeerConnectionManager {
   }
 }
 
+// SRP: Encapsulates Firestore signaling operations exclusively.
 class FirestoreSignalingService {
   constructor(db) {
     this.db = db;
@@ -108,7 +111,10 @@ class FirestoreSignalingService {
 }
 
 class CallController {
+  // Mediator Pattern: centralizes coordination between MediaManager, PeerConnectionManager,
+  // FirestoreSignalingService, and UI without them talking directly to each other.
   constructor(options) {
+    // DIP: Controller depends on abstractions (managers/services) injected via constructor.
     this.media = options.mediaManager;
     this.peer = options.peerManager;
     this.signaling = options.signalingService;
@@ -128,6 +134,7 @@ class CallController {
     window.addEventListener('beforeunload', () => this.hangUp());
   }
 
+  // SRP within controller: each handler manages one UI action.
   async handleStartWebcam() {
     try {
       const { localStream, remoteStream } = await this.media.start();
@@ -291,6 +298,7 @@ class CallController {
 }
 
 // --- Bootstrap the controller ------------------------------------------------
+// DIP usage: concrete instances are created here and passed into controller.
 const ui = {
   webcamButton: document.getElementById('webcamButton'),
   webcamVideo: document.getElementById('webcamVideo'),
