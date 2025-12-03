@@ -1,13 +1,17 @@
-Flask==3.0.0
-Flask-SocketIO==5.3.5
-Flask-SQLAlchemy==3.1.1
-python-dotenv==1.0.0
+# Web framework
+Flask
+Flask-SocketIO
+Flask-SQLAlchemy
+python-dotenv
 
-# ML/AI Dependencies
-tensorflow==2.15.0
-librosa==0.10.1
-numpy==1.24.3
-scipy==1.11.4
+# File upload for forms (used with FastAPI or Flask)
+python-multipart
 
-# Additional utilities
-python-multipart==0.0.6
+# ML/AI stack – pinned to versions that are compatible with each other
+# and with TensorFlow 2.16 (the latest stable series in late 2025)
+pandas
+numpy
+scipy
+librosa
+
+tensorflow
