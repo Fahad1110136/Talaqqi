@@ -1,173 +1,326 @@
-"""
-Talaqqi Flask Backend - Unified with SQLAlchemy ORM and ML Integration.
-Demonstrates: SOLID Principles, Repository Pattern with ORM, Service Layer, WebSocket.
-"""
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from werkzeug.utils import secure_filename
+import sqlite3
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-import logging
-import base64
-import numpy as np
+import json
 
-# Import configuration and models
-from config import Config
-from models import db, init_db, User, Message, Review, VideoCall, RecitationAnalysis, TajweedError, StudentProgress
-
-# Import services
-from services.tajweed_service import TajweedAnalysisService
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# Initialize Flask app
 app = Flask(__name__)
-app.config.from_object(Config)
+app.secret_key = 'your_secret_key_here'
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Initialize database
-init_db(app)
-
-# Initialize SocketIO
-socketio = SocketIO(app, cors_allowed_origins=app.config['SOCKETIO_CORS_ALLOWED_ORIGINS'])
-
-# Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
-# Initialize Tajweed service
-tajweed_service = TajweedAnalysisService()
-
-# ===== REPOSITORY LAYER (SQLAlchemy ORM) =====
+# ===== DATABASE LAYER =====
+class DatabaseConnection:
+    def __init__(self, db_path: str = 'database.db'):
+        self.db_path = db_path
+    
+    def __enter__(self):
+        self.conn = sqlite3.connect(self.db_path)
+        self.conn.row_factory = sqlite3.Row
+        return self.conn
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.conn.close()
 
 class UserRepository:
-    """User repository using SQLAlchemy ORM - replaced raw SQL"""
+    def create_table(self):
+        with DatabaseConnection() as conn:
+            conn.execute('''CREATE TABLE IF NOT EXISTS users
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          username TEXT UNIQUE NOT NULL,
+                          password TEXT NOT NULL,
+                          user_type TEXT NOT NULL,
+                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
     
-    @staticmethod
-    def create_user(username: str, password: str, user_type: str) -> bool:
+    def create_user(self, username: str, password: str, user_type: str) -> bool:
         try:
-            user = User(username=username, password=password, user_type=user_type)
-            db.session.add(user)
-            db.session.commit()
-            return True
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Create user failed: {e}")
+            with DatabaseConnection() as conn:
+                conn.execute('INSERT INTO users (username, password, user_type) VALUES (?, ?, ?)',
+                            (username, password, user_type))
+                conn.commit()
+                return True
+        except sqlite3.IntegrityError:
             return False
     
-    @staticmethod
-    def get_user_by_credentials(username: str, password: str) -> Optional[User]:
-        return User.query.filter_by(username=username, password=password).first()
+    def get_user_by_credentials(self, username: str, password: str) -> Optional[Dict]:
+        with DatabaseConnection() as conn:
+            user = conn.execute('SELECT * FROM users WHERE username = ? AND password = ?',
+                              (username, password)).fetchone()
+            return dict(user) if user else None
     
-    @staticmethod
-    def get_user_by_id(user_id: int) -> Optional[User]:
-        return User.query.get(user_id)
+    def get_user_by_id(self, user_id: int) -> Optional[Dict]:
+        with DatabaseConnection() as conn:
+            user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
+            return dict(user) if user else None
     
-    @staticmethod
-    def get_users_by_type(user_type: str) -> List[User]:
-        return User.query.filter_by(user_type=user_type).all()
-
+    def get_users_by_type(self, user_type: str) -> List[Dict]:
+        with DatabaseConnection() as conn:
+            users = conn.execute('SELECT id, username FROM users WHERE user_type = ?', 
+                               (user_type,)).fetchall()
+            return [dict(user) for user in users]
 
 class MessageRepository:
-    """Message repository using SQLAlchemy ORM"""
+    def create_table(self):
+        with DatabaseConnection() as conn:
+            conn.execute('''CREATE TABLE IF NOT EXISTS messages
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          sender_id INTEGER NOT NULL,
+                          receiver_id INTEGER NOT NULL,
+                          message TEXT NOT NULL,
+                          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          FOREIGN KEY (sender_id) REFERENCES users (id),
+                          FOREIGN KEY (receiver_id) REFERENCES users (id))''')
     
-    @staticmethod
-    def create_message(sender_id: int, receiver_id: int, message: str) -> bool:
-        try:
-            msg = Message(sender_id=sender_id, receiver_id=receiver_id, message=message)
-            db.session.add(msg)
-            db.session.commit()
+    def create_message(self, sender_id: int, receiver_id: int, message: str) -> bool:
+        with DatabaseConnection() as conn:
+            conn.execute('INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)',
+                        (sender_id, receiver_id, message))
+            conn.commit()
             return True
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Create message failed: {e}")
-            return False
     
-    @staticmethod
-    def get_conversation(user1_id: int, user2_id: int) -> List[Message]:
-        return Message.query.filter(
-            ((Message.sender_id == user1_id) & (Message.receiver_id == user2_id)) |
-            ((Message.sender_id == user2_id) & (Message.receiver_id == user1_id))
-        ).order_by(Message.timestamp).all()
-
+    def get_conversation(self, user1_id: int, user2_id: int) -> List[Dict]:
+        with DatabaseConnection() as conn:
+            messages = conn.execute('''
+                SELECT m.*, u.username as sender_name 
+                FROM messages m 
+                JOIN users u ON m.sender_id = u.id 
+                WHERE (m.sender_id = ? AND m.receiver_id = ?) 
+                   OR (m.sender_id = ? AND m.receiver_id = ?) 
+                ORDER BY m.timestamp
+            ''', (user1_id, user2_id, user2_id, user1_id)).fetchall()
+            return [dict(msg) for msg in messages]
 
 class ReviewRepository:
-    """Review repository using SQLAlchemy ORM"""
+    def create_table(self):
+        with DatabaseConnection() as conn:
+            conn.execute('''CREATE TABLE IF NOT EXISTS reviews
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          teacher_id INTEGER NOT NULL,
+                          student_id INTEGER NOT NULL,
+                          review TEXT NOT NULL,
+                          rating INTEGER NOT NULL,
+                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          FOREIGN KEY (teacher_id) REFERENCES users (id),
+                          FOREIGN KEY (student_id) REFERENCES users (id))''')
     
-    @staticmethod
-    def create_review(teacher_id: int, student_id: int, review: str, rating: int) -> bool:
-        try:
-            rev = Review(teacher_id=teacher_id, student_id=student_id, review=review, rating=rating)
-            db.session.add(rev)
-            db.session.commit()
+    def create_review(self, teacher_id: int, student_id: int, review: str, rating: int) -> bool:
+        with DatabaseConnection() as conn:
+            conn.execute('INSERT INTO reviews (teacher_id, student_id, review, rating) VALUES (?, ?, ?, ?)',
+                        (teacher_id, student_id, review, rating))
+            conn.commit()
             return True
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Create review failed: {e}")
-            return False
     
-    @staticmethod
-    def get_reviews_by_teacher(teacher_id: int) -> List[Review]:
-        return Review.query.filter_by(teacher_id=teacher_id).all()
+    def get_reviews_by_teacher(self, teacher_id: int) -> List[Dict]:
+        with DatabaseConnection() as conn:
+            reviews = conn.execute('''
+                SELECT r.*, u.username as student_name 
+                FROM reviews r 
+                JOIN users u ON r.student_id = u.id 
+                WHERE r.teacher_id = ?
+            ''', (teacher_id,)).fetchall()
+            return [dict(review) for review in reviews]
     
-    @staticmethod
-    def get_reviews_by_student(student_id: int) -> List[Review]:
-        return Review.query.filter_by(student_id=student_id).all()
-
+    def get_reviews_by_student(self, student_id: int) -> List[Dict]:
+        with DatabaseConnection() as conn:
+            reviews = conn.execute('''
+                SELECT r.*, u.username as teacher_name 
+                FROM reviews r 
+                JOIN users u ON r.teacher_id = u.id 
+                WHERE r.student_id = ?
+            ''', (student_id,)).fetchall()
+            return [dict(review) for review in reviews]
 
 class VideoCallRepository:
-    """Video call repository using SQLAlchemy ORM"""
+    def create_table(self):
+        with DatabaseConnection() as conn:
+            conn.execute('''CREATE TABLE IF NOT EXISTS video_calls
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          teacher_id INTEGER NOT NULL,
+                          student_id INTEGER NOT NULL,
+                          room_id TEXT UNIQUE NOT NULL,
+                          status TEXT DEFAULT 'active',
+                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          FOREIGN KEY (teacher_id) REFERENCES users (id),
+                          FOREIGN KEY (student_id) REFERENCES users (id))''')
     
-    @staticmethod
-    def create_video_call(teacher_id: int, student_id: int, room_id: str) -> bool:
-        try:
-            call = VideoCall(teacher_id=teacher_id, student_id=student_id, room_id=room_id)
-            db.session.add(call)
-            db.session.commit()
+    def create_video_call(self, teacher_id: int, student_id: int, room_id: str) -> bool:
+        with DatabaseConnection() as conn:
+            conn.execute('INSERT INTO video_calls (teacher_id, student_id, room_id) VALUES (?, ?, ?)',
+                        (teacher_id, student_id, room_id))
+            conn.commit()
             return True
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Create video call failed: {e}")
-            return False
     
-    @staticmethod
-    def get_active_call(teacher_id: int, student_id: int) -> Optional[VideoCall]:
-        return VideoCall.query.filter_by(
-            teacher_id=teacher_id,
-            student_id=student_id,
-            status='active'
-        ).first()
+    def get_active_call(self, teacher_id: int, student_id: int) -> Optional[Dict]:
+        with DatabaseConnection() as conn:
+            call = conn.execute('''
+                SELECT room_id FROM video_calls 
+                WHERE teacher_id = ? AND student_id = ? AND status = 'active'
+            ''', (teacher_id, student_id)).fetchone()
+            return dict(call) if call else None
     
-    @staticmethod
-    def get_call_by_room_id(room_id: str) -> Optional[VideoCall]:
-        return VideoCall.query.filter_by(room_id=room_id).first()
+    def get_call_by_room_id(self, room_id: str) -> Optional[Dict]:
+        with DatabaseConnection() as conn:
+            call = conn.execute('''
+                SELECT vc.*, t.username as teacher_name, s.username as student_name 
+                FROM video_calls vc
+                JOIN users t ON vc.teacher_id = t.id
+                JOIN users s ON vc.student_id = s.id
+                WHERE vc.room_id = ?
+            ''', (room_id,)).fetchone()
+            return dict(call) if call else None
     
-    @staticmethod
-    def end_call(room_id: str) -> bool:
+    def end_call(self, room_id: str) -> bool:
+        with DatabaseConnection() as conn:
+            conn.execute('UPDATE video_calls SET status = "ended" WHERE room_id = ?', (room_id,))
+            conn.commit()
+            return True
+
+# ===== NEW: ANNOTATION & PROGRESS DATABASE =====
+class AnnotationRepository:
+    def create_table(self):
+        with DatabaseConnection() as conn:
+            conn.execute('''CREATE TABLE IF NOT EXISTS annotations
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          user_id INTEGER NOT NULL,
+                          surah_number INTEGER NOT NULL,
+                          verse_number INTEGER NOT NULL,
+                          text TEXT NOT NULL,
+                          color TEXT DEFAULT '#FFEB3B',
+                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          FOREIGN KEY (user_id) REFERENCES users (id))''')
+    
+    def create_annotation(self, user_id: int, surah_number: int, verse_number: int, 
+                         text: str, color: str = '#FFEB3B') -> bool:
         try:
-            call = VideoCall.query.filter_by(room_id=room_id).first()
-            if call:
-                call.status = 'ended'
-                db.session.commit()
+            with DatabaseConnection() as conn:
+                conn.execute('''INSERT INTO annotations 
+                              (user_id, surah_number, verse_number, text, color) 
+                              VALUES (?, ?, ?, ?, ?)''',
+                           (user_id, surah_number, verse_number, text, color))
+                conn.commit()
                 return True
+        except:
             return False
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"End call failed: {e}")
+    
+    def get_annotations_by_user(self, user_id: int) -> List[Dict]:
+        with DatabaseConnection() as conn:
+            annotations = conn.execute('''
+                SELECT * FROM annotations 
+                WHERE user_id = ? 
+                ORDER BY surah_number, verse_number
+            ''', (user_id,)).fetchall()
+            return [dict(ann) for ann in annotations]
+    
+    def get_annotations_by_verse(self, user_id: int, surah_number: int, 
+                                verse_number: int) -> List[Dict]:
+        with DatabaseConnection() as conn:
+            annotations = conn.execute('''
+                SELECT * FROM annotations 
+                WHERE user_id = ? AND surah_number = ? AND verse_number = ?
+            ''', (user_id, surah_number, verse_number)).fetchall()
+            return [dict(ann) for ann in annotations]
+    
+    def update_annotation(self, annotation_id: int, user_id: int, 
+                         text: str, color: str) -> bool:
+        with DatabaseConnection() as conn:
+            conn.execute('''UPDATE annotations 
+                          SET text = ?, color = ?, updated_at = CURRENT_TIMESTAMP 
+                          WHERE id = ? AND user_id = ?''',
+                       (text, color, annotation_id, user_id))
+            conn.commit()
+            return conn.total_changes > 0
+    
+    def delete_annotation(self, annotation_id: int, user_id: int) -> bool:
+        with DatabaseConnection() as conn:
+            conn.execute('DELETE FROM annotations WHERE id = ? AND user_id = ?',
+                        (annotation_id, user_id))
+            conn.commit()
+            return conn.total_changes > 0
+
+class ProgressRepository:
+    def create_table(self):
+        with DatabaseConnection() as conn:
+            conn.execute('''CREATE TABLE IF NOT EXISTS progress
+                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          user_id INTEGER NOT NULL,
+                          surah_number INTEGER NOT NULL,
+                          verse_number INTEGER NOT NULL,
+                          action_type TEXT NOT NULL,
+                          duration INTEGER DEFAULT 0,
+                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                          FOREIGN KEY (user_id) REFERENCES users (id))''')
+    
+    def record_progress(self, user_id: int, surah_number: int, verse_number: int,
+                       action_type: str, duration: int = 0) -> bool:
+        try:
+            with DatabaseConnection() as conn:
+                conn.execute('''INSERT INTO progress 
+                              (user_id, surah_number, verse_number, action_type, duration) 
+                              VALUES (?, ?, ?, ?, ?)''',
+                           (user_id, surah_number, verse_number, action_type, duration))
+                conn.commit()
+                return True
+        except:
             return False
+    
+    def get_user_progress(self, user_id: int) -> List[Dict]:
+        with DatabaseConnection() as conn:
+            progress = conn.execute('''
+                SELECT surah_number, verse_number, action_type, 
+                       COUNT(*) as count, SUM(duration) as total_duration,
+                       MAX(created_at) as last_activity
+                FROM progress 
+                WHERE user_id = ?
+                GROUP BY surah_number, verse_number, action_type
+                ORDER BY surah_number, verse_number
+            ''', (user_id,)).fetchall()
+            return [dict(p) for p in progress]
+    
+    def get_progress_summary(self, user_id: int) -> Dict:
+        with DatabaseConnection() as conn:
+            # Get total verses read
+            verses_read = conn.execute('''
+                SELECT COUNT(DISTINCT surah_number || '-' || verse_number) as total 
+                FROM progress WHERE user_id = ? AND action_type = 'read'
+            ''', (user_id,)).fetchone()
+            
+            # Get total listening time
+            listen_time = conn.execute('''
+                SELECT SUM(duration) as total 
+                FROM progress WHERE user_id = ? AND action_type = 'listened'
+            ''', (user_id,)).fetchone()
+            
+            # Get total annotations
+            annotation_count = conn.execute('''
+                SELECT COUNT(*) as total FROM annotations WHERE user_id = ?
+            ''', (user_id,)).fetchone()
+            
+            # Get last 7 days activity
+            week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+            weekly_activity = conn.execute('''
+                SELECT DATE(created_at) as date, COUNT(*) as count
+                FROM progress 
+                WHERE user_id = ? AND created_at > ?
+                GROUP BY DATE(created_at)
+                ORDER BY date DESC
+            ''', (user_id, week_ago)).fetchall()
+            
+            return {
+                'verses_read': verses_read['total'] if verses_read['total'] else 0,
+                'listen_time': listen_time['total'] if listen_time['total'] else 0,
+                'annotation_count': annotation_count['total'] if annotation_count['total'] else 0,
+                'weekly_activity': [dict(a) for a in weekly_activity]
+            }
 
-
-# ===== SERVICE LAYER (Open/Closed Principle) =====
-
+# ===== SERVICE LAYER =====
 class BaseService(ABC):
-    """Abstract base class for services - OCP"""
     @abstractmethod
     def validate_input(self, *args, **kwargs) -> bool:
         pass
-
 
 class UserService(BaseService):
     def __init__(self, user_repo: UserRepository):
@@ -176,7 +329,7 @@ class UserService(BaseService):
     def validate_input(self, username: str, password: str, user_type: str) -> bool:
         return bool(username and password and user_type in ['teacher', 'student'])
     
-    def register_user(self, username: str, password: str, user_type: str) -> tuple:
+    def register_user(self, username: str, password: str, user_type: str) -> tuple[bool, str]:
         if not self.validate_input(username, password, user_type):
             return False, "Invalid input data"
         
@@ -185,12 +338,11 @@ class UserService(BaseService):
             return True, "Registration successful"
         return False, "Username already exists"
     
-    def authenticate_user(self, username: str, password: str) -> Optional[User]:
+    def authenticate_user(self, username: str, password: str) -> Optional[Dict]:
         return self.user_repo.get_user_by_credentials(username, password)
     
-    def get_users_by_type(self, user_type: str) -> List[User]:
+    def get_users_by_type(self, user_type: str) -> List[Dict]:
         return self.user_repo.get_users_by_type(user_type)
-
 
 class MessageService(BaseService):
     def __init__(self, message_repo: MessageRepository):
@@ -204,9 +356,8 @@ class MessageService(BaseService):
             return False
         return self.message_repo.create_message(sender_id, receiver_id, message)
     
-    def get_conversation(self, user1_id: int, user2_id: int) -> List[Message]:
+    def get_conversation(self, user1_id: int, user2_id: int) -> List[Dict]:
         return self.message_repo.get_conversation(user1_id, user2_id)
-
 
 class ReviewService(BaseService):
     def __init__(self, review_repo: ReviewRepository):
@@ -220,12 +371,11 @@ class ReviewService(BaseService):
             return False
         return self.review_repo.create_review(teacher_id, student_id, review, rating)
     
-    def get_teacher_reviews(self, teacher_id: int) -> List[Review]:
+    def get_teacher_reviews(self, teacher_id: int) -> List[Dict]:
         return self.review_repo.get_reviews_by_teacher(teacher_id)
     
-    def get_student_reviews(self, student_id: int) -> List[Review]:
+    def get_student_reviews(self, student_id: int) -> List[Dict]:
         return self.review_repo.get_reviews_by_student(student_id)
-
 
 class VideoCallService(BaseService):
     def __init__(self, video_call_repo: VideoCallRepository, user_repo: UserRepository):
@@ -246,24 +396,77 @@ class VideoCallService(BaseService):
         
         existing_call = self.video_call_repo.get_active_call(teacher_id, student_id)
         if existing_call:
-            return existing_call.room_id
+            return existing_call['room_id']
         
         room_id = str(uuid.uuid4())
         success = self.video_call_repo.create_video_call(teacher_id, student_id, room_id)
         return room_id if success else None
     
-    def get_room_details(self, room_id: str) -> Optional[VideoCall]:
+    def get_room_details(self, room_id: str) -> Optional[Dict]:
         return self.video_call_repo.get_call_by_room_id(room_id)
     
     def can_user_access_room(self, room_id: str, user_id: int) -> bool:
         room_details = self.get_room_details(room_id)
         if not room_details:
             return False
-        return user_id in [room_details.teacher_id, room_details.student_id]
+        return user_id in [room_details['teacher_id'], room_details['student_id']]
     
     def end_call(self, room_id: str) -> bool:
         return self.video_call_repo.end_call(room_id)
 
+# ===== NEW: ANNOTATION & PROGRESS SERVICES =====
+class AnnotationService(BaseService):
+    def __init__(self, annotation_repo: AnnotationRepository):
+        self.annotation_repo = annotation_repo
+    
+    def validate_input(self, user_id: int, surah_number: int, verse_number: int, 
+                      text: str, color: str) -> bool:
+        return bool(user_id and surah_number > 0 and verse_number > 0 and text.strip())
+    
+    def add_annotation(self, user_id: int, surah_number: int, verse_number: int,
+                      text: str, color: str = '#FFEB3B') -> tuple[bool, str]:
+        if not self.validate_input(user_id, surah_number, verse_number, text, color):
+            return False, "Invalid input data"
+        
+        success = self.annotation_repo.create_annotation(user_id, surah_number, verse_number, text, color)
+        return success, "Annotation added successfully" if success else "Failed to add annotation"
+    
+    def get_user_annotations(self, user_id: int) -> List[Dict]:
+        return self.annotation_repo.get_annotations_by_user(user_id)
+    
+    def get_verse_annotations(self, user_id: int, surah_number: int, verse_number: int) -> List[Dict]:
+        return self.annotation_repo.get_annotations_by_verse(user_id, surah_number, verse_number)
+    
+    def update_annotation(self, annotation_id: int, user_id: int, text: str, color: str) -> tuple[bool, str]:
+        if not text.strip():
+            return False, "Annotation text cannot be empty"
+        
+        success = self.annotation_repo.update_annotation(annotation_id, user_id, text, color)
+        return success, "Annotation updated successfully" if success else "Failed to update annotation"
+    
+    def delete_annotation(self, annotation_id: int, user_id: int) -> tuple[bool, str]:
+        success = self.annotation_repo.delete_annotation(annotation_id, user_id)
+        return success, "Annotation deleted successfully" if success else "Failed to delete annotation"
+
+class ProgressService(BaseService):
+    def __init__(self, progress_repo: ProgressRepository):
+        self.progress_repo = progress_repo
+    
+    def validate_input(self, user_id: int, surah_number: int, verse_number: int,
+                      action_type: str, duration: int) -> bool:
+        return bool(user_id and surah_number > 0 and verse_number > 0 and action_type)
+    
+    def record_activity(self, user_id: int, surah_number: int, verse_number: int,
+                       action_type: str, duration: int = 0) -> bool:
+        if not self.validate_input(user_id, surah_number, verse_number, action_type, duration):
+            return False
+        return self.progress_repo.record_progress(user_id, surah_number, verse_number, action_type, duration)
+    
+    def get_user_progress(self, user_id: int) -> List[Dict]:
+        return self.progress_repo.get_user_progress(user_id)
+    
+    def get_progress_summary(self, user_id: int) -> Dict:
+        return self.progress_repo.get_progress_summary(user_id)
 
 # ===== APPLICATION SETUP =====
 # Initialize repositories
@@ -271,21 +474,34 @@ user_repo = UserRepository()
 message_repo = MessageRepository()
 review_repo = ReviewRepository()
 video_call_repo = VideoCallRepository()
+annotation_repo = AnnotationRepository()
+progress_repo = ProgressRepository()
 
 # Initialize services
 user_service = UserService(user_repo)
 message_service = MessageService(message_repo)
 review_service = ReviewService(review_repo)
 video_call_service = VideoCallService(video_call_repo, user_repo)
+annotation_service = AnnotationService(annotation_repo)
+progress_service = ProgressService(progress_repo)
+
+# Database initialization
+def init_db():
+    user_repo.create_table()
+    message_repo.create_table()
+    review_repo.create_table()
+    video_call_repo.create_table()
+    annotation_repo.create_table()
+    progress_repo.create_table()
+
+init_db()
 
 # ===== ROUTES =====
-
 @app.route('/')
 def index():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return render_template('index.html')
-
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -302,7 +518,6 @@ def register():
     
     return render_template('register.html')
 
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -311,21 +526,19 @@ def login():
         
         user = user_service.authenticate_user(username, password)
         if user:
-            session['user_id'] = user.id
-            session['username'] = user.username
-            session['user_type'] = user.user_type
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['user_type'] = user['user_type']
             return redirect(url_for('dashboard'))
         else:
             return "Invalid credentials"
     
     return render_template('login.html')
 
-
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('index'))
-
 
 @app.route('/dashboard')
 def dashboard():
@@ -334,6 +547,9 @@ def dashboard():
     
     user_type = session['user_type']
     user_id = session['user_id']
+    
+    # Get progress summary for dashboard
+    progress_summary = progress_service.get_progress_summary(user_id)
     
     if user_type == 'teacher':
         students = user_service.get_users_by_type('student')
@@ -346,18 +562,149 @@ def dashboard():
     
     return render_template('dashboard.html', 
                          user_type=user_type,
-                         students=[s.to_dict() for s in students] if students else None,
-                         teachers=[t.to_dict() for t in teachers] if teachers else None,
-                         reviews=[r.to_dict() for r in reviews])
-
+                         students=students,
+                         teachers=teachers,
+                         reviews=reviews,
+                         progress_summary=progress_summary)
 
 @app.route('/mushaf')
 def mushaf():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('mushaf.html')
+    
+    # Get user's annotations for the mushaf
+    user_id = session['user_id']
+    annotations = annotation_service.get_user_annotations(user_id)
+    
+    return render_template('mushaf.html', annotations=annotations)
 
+# ===== NEW: ANNOTATION ROUTES =====
+@app.route('/add_annotation', methods=['POST'])
+def add_annotation():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'})
+    
+    try:
+        data = request.json
+        user_id = session['user_id']
+        surah_number = int(data['surah_number'])
+        verse_number = int(data['verse_number'])
+        text = data['text']
+        color = data.get('color', '#FFEB3B')
+        
+        success, message = annotation_service.add_annotation(
+            user_id, surah_number, verse_number, text, color
+        )
+        
+        return jsonify({'success': success, 'message': message})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/get_verse_annotations', methods=['GET'])
+def get_verse_annotations():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'annotations': []})
+    
+    try:
+        surah_number = int(request.args.get('surah_number'))
+        verse_number = int(request.args.get('verse_number'))
+        user_id = session['user_id']
+        
+        annotations = annotation_service.get_verse_annotations(
+            user_id, surah_number, verse_number
+        )
+        
+        return jsonify({'success': True, 'annotations': annotations})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'annotations': []})
+
+@app.route('/update_annotation', methods=['POST'])
+def update_annotation():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'})
+    
+    try:
+        data = request.json
+        annotation_id = int(data['annotation_id'])
+        user_id = session['user_id']
+        text = data['text']
+        color = data.get('color', '#FFEB3B')
+        
+        success, message = annotation_service.update_annotation(
+            annotation_id, user_id, text, color
+        )
+        
+        return jsonify({'success': success, 'message': message})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/delete_annotation', methods=['POST'])
+def delete_annotation():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'})
+    
+    try:
+        data = request.json
+        annotation_id = int(data['annotation_id'])
+        user_id = session['user_id']
+        
+        success, message = annotation_service.delete_annotation(annotation_id, user_id)
+        
+        return jsonify({'success': success, 'message': message})
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/my_annotations')
+def my_annotations():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    user_id = session['user_id']
+    annotations = annotation_service.get_user_annotations(user_id)
+    
+    return render_template('my_annotations.html', annotations=annotations)
+
+# ===== NEW: PROGRESS TRACKING ROUTES =====
+@app.route('/record_progress', methods=['POST'])
+def record_progress():
+    if 'user_id' not in session:
+        return jsonify({'success': False})
+    
+    try:
+        data = request.json
+        user_id = session['user_id']
+        surah_number = int(data['surah_number'])
+        verse_number = int(data['verse_number'])
+        action_type = data['action_type']
+        duration = int(data.get('duration', 0))
+        
+        success = progress_service.record_activity(
+            user_id, surah_number, verse_number, action_type, duration
+        )
+        
+        return jsonify({'success': success})
+    
+    except Exception as e:
+        return jsonify({'success': False})
+
+@app.route('/progress_report')
+def progress_report():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    user_id = session['user_id']
+    progress_data = progress_service.get_user_progress(user_id)
+    progress_summary = progress_service.get_progress_summary(user_id)
+    
+    return render_template('progress_report.html', 
+                         progress_data=progress_data,
+                         progress_summary=progress_summary)
+
+# ===== EXISTING ROUTES (unchanged) =====
 @app.route('/chat/<int:user_id>')
 def chat(user_id):
     if 'user_id' not in session:
@@ -369,15 +716,12 @@ def chat(user_id):
     
     messages = message_service.get_conversation(session['user_id'], user_id)
     
-    return render_template('chat.html', 
-                         other_user=other_user.to_dict(), 
-                         messages=[m.to_dict() for m in messages])
-
+    return render_template('chat.html', other_user=other_user, messages=messages)
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
     if 'user_id' not in session:
-        return jsonify({'success': False}), 401
+        return jsonify({'success': False})
     
     receiver_id = request.json['receiver_id']
     message_text = request.json['message']
@@ -394,7 +738,33 @@ def send_message():
     
     return jsonify({'success': success})
 
+@app.route('/add_review', methods=['POST'])
+def add_review():
+    if 'user_id' not in session or session['user_type'] != 'teacher':
+        return jsonify({'success': False})
+    
+    student_id = request.json['student_id']
+    review_text = request.json['review']
+    rating = request.json['rating']
+    
+    success = review_service.add_review(session['user_id'], student_id, review_text, rating)
+    return jsonify({'success': success})
 
+@app.route('/create_video_room/<int:other_user_id>')
+def create_video_room(other_user_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    room_id = video_call_service.create_or_get_room(
+        session['user_id'], 
+        session['user_type'], 
+        other_user_id
+    )
+    
+    if not room_id:
+        return "Failed to create video room"
+    
+    return redirect(url_for('video_call', room_id=room_id))
 
 
     # ===== NEW: TAJWEED ANALYSIS ROUTE =====
@@ -421,38 +791,6 @@ def redirect_to_tarteel():
     # Redirect to Tarteel.ai
     return redirect('https://www.tarteel.ai/')
 
-@app.route('/add_review', methods=['POST'])
-def add_review():
-    if 'user_id' not in session or session['user_type'] != 'teacher':
-        return jsonify({'success': False}), 401
-    
-    student_id = request.json['student_id']
-    review_text = request.json['review']
-    rating = request.json['rating']
-    
-    success = review_service.add_review(session['user_id'], student_id, review_text, rating)
-    return jsonify({'success': success})
-
-
-# ===== VIDEO CALL ROUTES =====
-
-@app.route('/create_video_room/<int:other_user_id>')
-def create_video_room(other_user_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    room_id = video_call_service.create_or_get_room(
-        session['user_id'], 
-        session['user_type'], 
-        other_user_id
-    )
-    
-    if not room_id:
-        return "Failed to create video room"
-    
-    return redirect(url_for('video_call', room_id=room_id))
-
-
 @app.route('/join_video_room/<int:other_user_id>')
 def join_video_room(other_user_id):
     if 'user_id' not in session:
@@ -469,7 +807,6 @@ def join_video_room(other_user_id):
     
     return redirect(url_for('video_call', room_id=room_id))
 
-
 @app.route('/video_call/<room_id>')
 def video_call(room_id):
     if 'user_id' not in session:
@@ -482,94 +819,22 @@ def video_call(room_id):
     if not call_data:
         return "Room not found"
     
-    other_user_name = (call_data.teacher.username if session['user_type'] == 'student' 
-                      else call_data.student.username)
+    other_user_name = (call_data['teacher_name'] if session['user_type'] == 'student' 
+                      else call_data['student_name'])
     
     return render_template('video_call.html', 
                          room_id=room_id, 
                          other_user_name=other_user_name,
                          user_type=session['user_type'])
 
-
-# ===== AI/ML TAJWEED ANALYSIS ROUTES =====
-
-@app.route('/api/analysis/upload', methods=['POST'])
-def upload_audio():
-    """Upload audio file for Tajweed analysis"""
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    
-    if 'audio' not in request.files:
-        return jsonify({'success': False, 'error': 'No audio file'}), 400
-    
-    audio_file = request.files['audio']
-    
-    # Validate file
-    if audio_file.filename == '':
-        return jsonify({'success': False, 'error': 'Empty filename'}), 400
-    
-    # Save file
-    filename = secure_filename(f"{session['user_id']}_{datetime.utcnow().timestamp()}.wav")
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    audio_file.save(filepath)
-    
-    try:
-        # Analyze audio
-        result = tajweed_service.analyze_audio_file(filepath, session['user_id'])
-        return jsonify({'success': True, 'result': result})
-    except Exception as e:
-        logger.error(f"Analysis failed: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/api/analysis/<int:analysis_id>')
-def get_analysis(analysis_id):
-    """Retrieve analysis results by ID"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    result = tajweed_service.get_analysis_by_id(analysis_id, session['user_id'])
-    
-    if not result:
-        return jsonify({'error': 'Analysis not found'}), 404
-    
-    return jsonify(result)
-
-
-@app.route('/api/analysis/history')
-def get_analysis_history():
-    """Get student's analysis history"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    limit = request.args.get('limit', 10, type=int)
-    history = tajweed_service.get_student_history(session['user_id'], limit)
-    
-    return jsonify({'history': history})
-
-
-@app.route('/api/progress')
-def get_progress():
-    """Get student's Tajweed progress"""
-    if 'user_id' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    progress = tajweed_service.get_student_progress(session['user_id'])
-    
-    return jsonify({'progress': progress})
-
-
 # ===== SOCKET.IO HANDLERS =====
-
 @socketio.on('connect')
 def handle_connect():
-    logger.info('Client connected')
-
+    print('Client connected')
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    logger.info('Client disconnected')
-
+    print('Client disconnected')
 
 @socketio.on('join_room')
 def handle_join_room(data):
@@ -578,14 +843,13 @@ def handle_join_room(data):
     user_type = data.get('user_type')
     
     join_room(room_id)
-    logger.info(f'User {user_id} ({user_type}) joined room {room_id}')
+    print(f'User {user_id} ({user_type}) joined room {room_id}')
     
     emit('user_joined', {
         'user_id': user_id,
         'user_type': user_type,
         'message': f'User {user_id} joined room {room_id}'
     }, room=room_id, include_self=False)
-
 
 @socketio.on('webrtc_offer')
 def handle_webrtc_offer(data):
@@ -595,7 +859,6 @@ def handle_webrtc_offer(data):
         'sender_id': data['sender_id']
     }, room=room_id, include_self=False)
 
-
 @socketio.on('webrtc_answer')
 def handle_webrtc_answer(data):
     room_id = data['room_id']
@@ -603,7 +866,6 @@ def handle_webrtc_answer(data):
         'answer': data['answer'],
         'sender_id': data['sender_id']
     }, room=room_id, include_self=False)
-
 
 @socketio.on('ice_candidate')
 def handle_ice_candidate(data):
@@ -613,13 +875,11 @@ def handle_ice_candidate(data):
         'sender_id': data['sender_id']
     }, room=room_id, include_self=False)
 
-
 @socketio.on('end_call')
 def handle_end_call(data):
     room_id = data['room_id']
     emit('call_ended', {'message': 'Call ended by other user'}, room=room_id)
     video_call_service.end_call(room_id)
-
 
 @socketio.on('toggle_video')
 def handle_toggle_video(data):
@@ -629,7 +889,6 @@ def handle_toggle_video(data):
         'sender_id': data['sender_id']
     }, room=room_id)
 
-
 @socketio.on('toggle_audio')
 def handle_toggle_audio(data):
     room_id = data['room_id']
@@ -638,35 +897,5 @@ def handle_toggle_audio(data):
         'sender_id': data['sender_id']
     }, room=room_id)
 
-
-# ===== REAL-TIME TAJWEED ANALYSIS (WebSocket) =====
-
-@socketio.on('analyze_audio_stream')
-def handle_audio_stream(data):
-    """Real-time audio analysis during video call"""
-    try:
-        audio_chunk_b64 = data['audio_chunk']
-        room_id = data['room_id']
-        student_id = data.get('student_id', session.get('user_id'))
-        
-        # Decode base64 audio
-        audio_bytes = base64.b64decode(audio_chunk_b64)
-        audio_array = np.frombuffer(audio_bytes, dtype=np.float32)
-        
-        # Analyze chunk
-        result = tajweed_service.analyze_audio_stream(audio_array, student_id, room_id)
-        
-        # Emit results to room
-        emit('tajweed_feedback', {
-            'score': result.get('overall_score', 0),
-            'detections': result.get('detections', []),
-            'feedback': result.get('feedback', [])
-        }, room=room_id)
-        
-    except Exception as e:
-        logger.error(f"Stream analysis failed: {str(e)}")
-        emit('tajweed_error', {'error': str(e)}, room=data.get('room_id'))
-
-
 if __name__ == '__main__':
-    socketio.run(app, debug=app.config['DEBUG'], host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)

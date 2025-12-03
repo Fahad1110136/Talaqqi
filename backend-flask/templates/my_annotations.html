@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Mushaf - Complete Annotation System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary: #1a5f7a;
+            --primary-dark: #0d3b4d;
+            --primary-light: #2c8eb8;
+            --secondary: #57cc99;
+            --accent: #ffd166;
+            --danger: #ef476f;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --teacher-color: #8a2be2;
+            --student-color: #2e8b57;
+            --surah-bg: #fff9e6;
+        }
+
+        body {
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        /* Loading Screen */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--light-gray);
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Main Container */
+        .annotation-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            gap: 20px;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .user-info {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--light-gray);
+        }
+
+        .user-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: var(--student-color);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .role-badge.teacher {
+            background: var(--teacher-color);
+        }
+
+        .search-section {
+            margin-bottom: 25px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--light-gray);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(26, 95, 122, 0.1);
+        }
+
+        .quran-nav {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: 20px;
+        }
+
+        .nav-section h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .juz-item, .surah-item {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .juz-item:hover, .surah-item:hover {
+            background: var(--light);
+        }
+
+        .juz-item.active, .surah-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .surah-name {
+            font-weight: 600;
+        }
+
+        .verse-count {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+
+        /* Main Content - Mushaf */
+        .mushaf-content {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow-y: auto;
+            max-height: calc(100vh - 40px);
+        }
+
+        .mushaf-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--light-gray);
+        }
+
+        .surah-title {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            margin-bottom: 5px;
+        }
+
+        .surah-title-arabic {
+            font-family: 'Traditional Arabic', 'Noto Naskh Arabic', serif;
+            font-size: 2.2rem;
+            color: var(--dark);
+            margin-bottom: 15px;
+        }
+
+        .surah-meta {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            color: var(--gray);
+            font-size: 0.95rem;
+            flex-wrap: wrap;
+        }
+
+        .reading-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            padding: 8px 15px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .verses-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .verse-card {
+            background: white;
+            border: 2px solid var(--light-gray);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .verse-card:hover {
+            border-color: var(--primary-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .verse-card.annotated {
+            border-color: var(--secondary);
+            background: linear-gradient(135deg, #f8fff8 0%, #f0f9f0 100%);
+        }
+
+        .verse-card.teacher-annotated {
+            border-color: var(--teacher-color);
+            background: linear-gradient(135deg, #f9f0ff 0%, #f4e8ff 100%);
+        }
+
+        .verse-number {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: var(--primary);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+
+        .verse-actions {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: var(--light-gray);
+            color: var(--dark);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .verse-content {
+            margin-top: 20px;
+            margin-left: 40px;
+        }
+
+        .verse-arabic {
+            font-family: 'Traditional Arabic', 'Noto Naskh Arabic', serif;
+            font-size: 1.8rem;
+            text-align: right;
+            line-height: 2;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-right: 4px solid var(--primary);
+        }
+
+        .verse-translation {
+            color: var(--dark);
+            font-size: 1.1rem;
+            line-height: 1.6;
+            padding: 12px;
+            background: var(--light);
+            border-radius: 8px;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .annotation-indicator {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid var(--light-gray);
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        /* Annotations Panel */
+        .annotations-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .panel-header {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light-gray);
+        }
+
+        .panel-header h2 {
+            color: var(--primary-dark);
+            font-size: 1.5rem;
+        }
+
+        .annotation-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 15px;
+            background: var(--light-gray);
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .annotation-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border: 2px solid var(--light-gray);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--dark);
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .tag-input {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 5px;
+        }
+
+        .tag {
+            background: var(--primary);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--gray);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .annotations-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .annotation-item {
+            background: white;
+            border: 2px solid var(--light-gray);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .annotation-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+
+        .annotation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .annotation-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .annotation-verse {
+            font-weight: bold;
+            color: var(--primary);
+            cursor: pointer;
+        }
+
+        .annotation-verse:hover {
+            text-decoration: underline;
+        }
+
+        .annotation-author {
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .annotation-author.teacher {
+            background: rgba(138, 43, 226, 0.1);
+            color: var(--teacher-color);
+        }
+
+        .annotation-author.student {
+            background: rgba(46, 139, 87, 0.1);
+            color: var(--student-color);
+        }
+
+        .annotation-content {
+            color: var(--dark);
+            line-height: 1.5;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+        }
+
+        .annotation-tags {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .annotation-tag {
+            padding: 3px 10px;
+            background: var(--light-gray);
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .annotation-actions {
+            margin-top: 10px;
+            text-align: right;
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toast {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+            border-left: 4px solid var(--primary);
+        }
+
+        .toast.success {
+            border-left-color: var(--secondary);
+        }
+
+        .toast.error {
+            border-left-color: var(--danger);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .annotation-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar, .annotations-panel {
+                position: static;
+                height: auto;
+            }
+            
+            .verse-arabic {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .annotation-container {
+                padding: 10px;
+            }
+            
+            .surah-title {
+                font-size: 1.5rem;
+            }
+            
+            .surah-title-arabic {
+                font-size: 1.8rem;
+            }
+            
+            .surah-meta {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .reading-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .control-btn {
+                justify-content: center;
+            }
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--gray);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="loader"></div>
+        <p>Loading Digital Mushaf Annotation System...</p>
+    </div>
+
+    <!-- Main Container -->
+    <div class="annotation-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">S</div>
+                <h3 id="userName">Student User</h3>
+                <div class="role-badge student" id="userRole">Student</div>
+                <div style="margin-top: 15px;">
+                    <button class="btn btn-primary" onclick="switchRole()">
+                        <i class="fas fa-exchange-alt"></i> Switch Role
+                    </button>
+                </div>
+            </div>
+
+            <div class="search-section">
+                <input type="text" class="search-box" id="searchInput" 
+                       placeholder="Search verses, translations...">
+            </div>
+
+            <div class="quran-nav">
+                <div class="nav-section">
+                    <h3><i class="fas fa-book-open"></i> Quran Navigation</h3>
+                    <div id="juzList">
+                        <!-- Juz list will be loaded dynamically -->
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <h3><i class="fas fa-list"></i> Surah List</h3>
+                    <div id="surahList">
+                        <!-- Surah list will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Mushaf Content -->
+        <div class="mushaf-content" id="mushafContent">
+            <div class="mushaf-header">
+                <h2 class="surah-title" id="currentSurahTitle">Loading Quran...</h2>
+                <div class="surah-title-arabic" id="currentSurahArabic">...</div>
+                <div class="surah-meta" id="surahMeta">
+                    <span>Loading...</span>
+                </div>
+                <div class="reading-controls">
+                    <button class="control-btn" onclick="prevSurah()">
+                        <i class="fas fa-arrow-left"></i> Previous
+                    </button>
+                    <button class="control-btn" onclick="bookmarkSurah()">
+                        <i class="fas fa-bookmark"></i> Bookmark
+                    </button>
+                    <button class="control-btn" onclick="nextSurah()">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="verses-container" id="versesContainer">
+                <div class="loading">
+                    <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+                    <p>Loading Quran verses...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Annotations Panel -->
+        <div class="annotations-panel">
+            <div class="panel-header">
+                <h2><i class="fas fa-edit"></i> Annotations</h2>
+                <p id="annotationStatus">Click any verse to annotate</p>
+            </div>
+
+            <div class="annotation-filters">
+                <button class="filter-btn active" onclick="filterAnnotations('all')">All</button>
+                <button class="filter-btn" onclick="filterAnnotations('mine')">My Annotations</button>
+                <button class="filter-btn" onclick="filterAnnotations('teacher')">Teacher Notes</button>
+                <button class="filter-btn" onclick="filterAnnotations('important')">Important</button>
+                <button class="filter-btn" onclick="filterAnnotations('questions')">Questions</button>
+            </div>
+
+            <!-- Annotation Form -->
+            <div class="annotation-form" id="annotationForm" style="display: none;">
+                <div class="form-group">
+                    <label>Verse Reference</label>
+                    <input type="text" class="form-control" id="verseReference" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Your Annotation</label>
+                    <textarea class="form-control" id="annotationText" 
+                              placeholder="Write your reflection, question, or note..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Tags (press Enter to add)</label>
+                    <input type="text" class="form-control" id="tagInput" 
+                           placeholder="e.g., reflection, question, memorization" 
+                           onkeypress="addTag(event)">
+                    <div class="tag-input" id="tagContainer"></div>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-primary" onclick="saveAnnotation()">
+                        <i class="fas fa-save"></i> Save Annotation
+                    </button>
+                    <button class="btn btn-secondary" onclick="cancelAnnotation()">
+                        Cancel
+                    </button>
+                    <button class="btn btn-danger" id="deleteBtn" style="display: none;" onclick="deleteAnnotation()">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </div>
+
+            <!-- Annotations List -->
+            <div class="annotations-list" id="annotationsList">
+                <div class="empty-state">
+                    <div><i class="fas fa-edit"></i></div>
+                    <p>No annotations yet. Click any verse to add your first annotation!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ==================== GLOBAL VARIABLES ====================
+        const QURAN_API = 'https://api.alquran.cloud/v1';
+        let currentUser = {
+            id: 'student_001',
+            name: 'Student User',
+            role: 'student', // 'student' or 'teacher'
+            email: 'student@example.com'
+        };
+        let currentSurah = null;
+        let currentVerse = null;
+        let editingAnnotationId = null;
+        let annotations = {};
+        let surahList = [];
+        let currentTags = [];
+        let currentFilter = 'all';
+
+        // ==================== INITIALIZATION ====================
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load user data
+            const savedUser = localStorage.getItem('quranAnnotation_user');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+            }
+            
+            // Load annotations
+            const savedAnnotations = localStorage.getItem(`quranAnnotation_data_${currentUser.id}`);
+            if (savedAnnotations) {
+                annotations = JSON.parse(savedAnnotations);
+            }
+            
+            // Update UI
+            updateUserDisplay();
+            
+            // Load Quran data
+            await loadSurahList();
+            await loadSurah(1);
+            
+            // Hide loading screen
+            document.getElementById('loadingScreen').style.display = 'none';
+        });
+
+        // ==================== USER MANAGEMENT ====================
+        function updateUserDisplay() {
+            document.getElementById('userName').textContent = currentUser.name;
+            document.getElementById('userAvatar').textContent = currentUser.name.charAt(0);
+            
+            const roleBadge = document.getElementById('userRole');
+            roleBadge.textContent = currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1);
+            roleBadge.className = `role-badge ${currentUser.role}`;
+        }
+
+        function switchRole() {
+            currentUser.role = currentUser.role === 'student' ? 'teacher' : 'student';
+            currentUser.name = currentUser.role === 'teacher' ? 'Teacher User' : 'Student User';
+            currentUser.id = currentUser.role === 'teacher' ? 'teacher_001' : 'student_001';
+            
+            localStorage.setItem('quranAnnotation_user', JSON.stringify(currentUser));
+            updateUserDisplay();
+            showToast('Role switched to ' + currentUser.role, 'success');
+            
+            // Load user-specific annotations
+            const savedAnnotations = localStorage.getItem(`quranAnnotation_data_${currentUser.id}`);
+            if (savedAnnotations) {
+                annotations = JSON.parse(savedAnnotations);
+            }
+            
+            // Update annotations list
+            updateAnnotationsList();
+        }
+
+        // ==================== QURAN API FUNCTIONS ====================
+        async function loadSurahList() {
+            try {
+                const response = await fetch(`${QURAN_API}/surah`);
+                const data = await response.json();
+                
+                if (data.code === 200) {
+                    surahList = data.data;
+                    renderSurahList();
+                    renderJuzList();
+                }
+            } catch (error) {
+                console.error('Error loading surah list:', error);
+                showToast('Failed to load surah list. Using offline data.', 'error');
+            }
+        }
+
+        function renderSurahList() {
+            const container = document.getElementById('surahList');
+            container.innerHTML = '';
+            
+            surahList.forEach(surah => {
+                const item = document.createElement('div');
+                item.className = 'surah-item';
+                item.onclick = () => loadSurah(surah.number);
+                item.innerHTML = `
+                    <span class="surah-name">${surah.englishName}</span>
+                    <span class="verse-count">${surah.numberOfAyahs}v</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function renderJuzList() {
+            const container = document.getElementById('juzList');
+            container.innerHTML = '';
+            
+            // Group surahs by juz (simplified - in real app, you'd have proper juz data)
+            for (let juz = 1; juz <= 30; juz++) {
+                const surahsInJuz = surahList.filter(s => getJuzForSurah(s.number) === juz);
+                if (surahsInJuz.length > 0) {
+                    const item = document.createElement('div');
+                    item.className = 'juz-item';
+                    item.onclick = () => loadJuz(juz);
+                    item.innerHTML = `
+                        <span>Juz ${juz}</span>
+                        <span class="verse-count">${surahsInJuz.length}s</span>
+                    `;
+                    container.appendChild(item);
+                }
+            }
+        }
+
+        function getJuzForSurah(surahNumber) {
+            // Simplified juz calculation - in real app, use proper juz data
+            if (surahNumber <= 2) return 1;
+            if (surahNumber <= 4) return 2;
+            if (surahNumber <= 6) return 3;
+            if (surahNumber <= 9) return 4;
+            if (surahNumber <= 11) return 5;
+            if (surahNumber <= 14) return 6;
+            if (surahNumber <= 16) return 7;
+            if (surahNumber <= 18) return 8;
+            if (surahNumber <= 21) return 9;
+            if (surahNumber <= 23) return 10;
+            if (surahNumber <= 25) return 11;
+            if (surahNumber <= 27) return 12;
+            if (surahNumber <= 29) return 13;
+            if (surahNumber <= 32) return 14;
+            if (surahNumber <= 34) return 15;
+            if (surahNumber <= 36) return 16;
+            if (surahNumber <= 38) return 17;
+            if (surahNumber <= 41) return 18;
+            if (surahNumber <= 45) return 19;
+            if (surahNumber <= 51) return 20;
+            if (surahNumber <= 57) return 21;
+            if (surahNumber <= 66) return 22;
+            if (surahNumber <= 77) return 23;
+            if (surahNumber <= 83) return 24;
+            if (surahNumber <= 96) return 25;
+            if (surahNumber <= 104) return 26;
+            if (surahNumber <= 114) return 27;
+            return 30;
+        }
+
+        async function loadSurah(surahNumber) {
+            try {
+                document.getElementById('versesContainer').innerHTML = `
+                    <div class="loading">
+                        <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px;"></div>
+                        <p>Loading Surah ${surahNumber}...</p>
+                    </div>
+                `;
+                
+                // Load Arabic text
+                const arabicResponse = await fetch(`${QURAN_API}/surah/${surahNumber}`);
+                const arabicData = await arabicResponse.json();
+                
+                // Load English translation
+                const translationResponse = await fetch(`${QURAN_API}/surah/${surahNumber}/en.asad`);
+                const translationData = await translationResponse.json();
+                
+                if (arabicData.code === 200 && translationData.code === 200) {
+                    currentSurah = {
+                        number: surahNumber,
+                        name: arabicData.data.englishName,
+                        arabicName: arabicData.data.name,
+                        type: arabicData.data.revelationType,
+                        verses: arabicData.data.ayahs,
+                        translations: translationData.data.ayahs
+                    };
+                    
+                    updateSurahHeader();
+                    renderVerses();
+                    
+                    // Update active surah in sidebar
+                    updateActiveSurah(surahNumber);
+                    
+                    // Record progress
+                    recordProgress('read', 0);
+                }
+            } catch (error) {
+                console.error('Error loading surah:', error);
+                showToast('Failed to load surah. Please try again.', 'error');
+            }
+        }
+
+        function updateSurahHeader() {
+            document.getElementById('currentSurahTitle').textContent = 
+                `${currentSurah.name} - ${currentSurah.arabicName}`;
+            document.getElementById('currentSurahArabic').textContent = currentSurah.arabicName;
+            
+            document.getElementById('surahMeta').innerHTML = `
+                <span>Surah ${currentSurah.number}</span>
+                <span>${currentSurah.verses.length} Verses</span>
+                <span>${currentSurah.type}</span>
+                <span>Juz ${getJuzForSurah(currentSurah.number)}</span>
+            `;
+        }
+
+        function renderVerses() {
+            const container = document.getElementById('versesContainer');
+            container.innerHTML = '';
+            
+            currentSurah.verses.forEach((verse, index) => {
+                const verseKey = `${currentSurah.number}:${verse.numberInSurah}`;
+                const verseAnnotations = annotations[verseKey] || [];
+                const userAnnotation = verseAnnotations.find(ann => ann.authorId === currentUser.id);
+                const teacherAnnotations = verseAnnotations.filter(ann => ann.authorRole === 'teacher');
+                
+                const verseDiv = document.createElement('div');
+                verseDiv.className = `verse-card ${userAnnotation ? 'annotated' : ''} ${teacherAnnotations.length > 0 ? 'teacher-annotated' : ''}`;
+                verseDiv.onclick = () => openAnnotationForm(verseKey);
+                
+                verseDiv.innerHTML = `
+                    <div class="verse-number">${verse.numberInSurah}</div>
+                    <div class="verse-actions">
+                        <button class="action-btn" onclick="bookmarkVerse('${verseKey}', event)">
+                            <i class="fas fa-bookmark"></i>
+                        </button>
+                        <button class="action-btn" onclick="viewAnnotations('${verseKey}', event)">
+                            <i class="fas fa-comment"></i>
+                        </button>
+                    </div>
+                    <div class="verse-content">
+                        <div class="verse-arabic">${verse.text}</div>
+                        <div class="verse-translation">
+                            ${currentSurah.translations[index]?.text || 'Translation loading...'}
+                        </div>
+                        ${verseAnnotations.length > 0 ? `
+                            <div class="annotation-indicator">
+                                <i class="fas fa-edit"></i> ${verseAnnotations.length} annotation${verseAnnotations.length > 1 ? 's' : ''}
+                                ${teacherAnnotations.length > 0 ? ` (${teacherAnnotations.length} teacher notes)` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                container.appendChild(verseDiv);
+            });
+        }
+
+        // ==================== ANNOTATION FUNCTIONS ====================
+        function openAnnotationForm(verseKey) {
+            currentVerse = verseKey;
+            currentTags = [];
+            
+            // Parse verse reference
+            const [surahNum, verseNum] = verseKey.split(':');
+            const surah = surahList.find(s => s.number == surahNum);
+            
+            // Update form
+            document.getElementById('verseReference').value = 
+                `${surah ? surah.englishName : 'Surah'} ${surahNum}:${verseNum}`;
+            document.getElementById('annotationText').value = '';
+            document.getElementById('tagInput').value = '';
+            document.getElementById('tagContainer').innerHTML = '';
+            
+            // Check for existing user annotation
+            const existingAnnotation = getUserAnnotation(verseKey);
+            if (existingAnnotation) {
+                document.getElementById('annotationText').value = existingAnnotation.text;
+                currentTags = existingAnnotation.tags || [];
+                editingAnnotationId = existingAnnotation.id;
+                document.getElementById('deleteBtn').style.display = 'inline-block';
+                renderTags();
+            } else {
+                editingAnnotationId = null;
+                document.getElementById('deleteBtn').style.display = 'none';
+            }
+            
+            // Show form
+            document.getElementById('annotationForm').style.display = 'block';
+            document.getElementById('annotationStatus').textContent = 
+                `Editing: ${surah ? surah.englishName : 'Surah'} ${surahNum}:${verseNum}`;
+            
+            // Load annotations for this verse
+            loadVerseAnnotations(verseKey);
+            
+            // Scroll to form
+            document.getElementById('annotationForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelAnnotation() {
+            document.getElementById('annotationForm').style.display = 'none';
+            document.getElementById('annotationStatus').textContent = 'Click any verse to annotate';
+            currentVerse = null;
+            editingAnnotationId = null;
+            currentTags = [];
+        }
+
+        function addTag(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = document.getElementById('tagInput');
+                const tag = input.value.trim();
+                
+                if (tag && !currentTags.includes(tag)) {
+                    currentTags.push(tag);
+                    renderTags();
+                    input.value = '';
+                }
+            }
+        }
+
+        function renderTags() {
+            const container = document.getElementById('tagContainer');
+            container.innerHTML = '';
+            
+            currentTags.forEach(tag => {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'tag';
+                tagElement.innerHTML = `
+                    ${tag}
+                    <span class="tag-remove" onclick="removeTag('${tag}')">×</span>
+                `;
+                container.appendChild(tagElement);
+            });
+        }
+
+        function removeTag(tag) {
+            currentTags = currentTags.filter(t => t !== tag);
+            renderTags();
+        }
+
+        async function saveAnnotation() {
+            if (!currentVerse) {
+                showToast('No verse selected', 'error');
+                return;
+            }
+            
+            const text = document.getElementById('annotationText').value.trim();
+            if (!text) {
+                showToast('Please enter annotation text', 'error');
+                return;
+            }
+            
+            const annotation = {
+                id: editingAnnotationId || `ann_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                verseKey: currentVerse,
+                text: text,
+                tags: currentTags,
+                authorId: currentUser.id,
+                authorName: currentUser.name,
+                authorRole: currentUser.role,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            
+            // Initialize array for this verse if not exists
+            if (!annotations[currentVerse]) {
+                annotations[currentVerse] = [];
+            }
+            
+            if (editingAnnotationId) {
+                // Replace existing annotation
+                const index = annotations[currentVerse].findIndex(ann => ann.id === editingAnnotationId);
+                if (index !== -1) {
+                    annotations[currentVerse][index] = annotation;
+                }
+            } else {
+                // Add new annotation
+                annotations[currentVerse].push(annotation);
+            }
+            
+            // Save to localStorage
+            saveAnnotations();
+            
+            // Update UI
+            updateVerseCard(currentVerse);
+            cancelAnnotation();
+            updateAnnotationsList();
+            
+            showToast('Annotation saved successfully!', 'success');
+            
+            // Record progress
+            recordProgress('annotated', 0);
+        }
+
+        function deleteAnnotation() {
+            if (!confirm('Are you sure you want to delete this annotation?')) {
+                return;
+            }
+            
+            if (currentVerse && annotations[currentVerse]) {
+                annotations[currentVerse] = annotations[currentVerse].filter(
+                    ann => ann.id !== editingAnnotationId
+                );
+                
+                if (annotations[currentVerse].length === 0) {
+                    delete annotations[currentVerse];
+                }
+                
+                saveAnnotations();
+                updateVerseCard(currentVerse);
+                cancelAnnotation();
+                updateAnnotationsList();
+                
+                showToast('Annotation deleted', 'success');
+            }
+        }
+
+        function getUserAnnotation(verseKey) {
+            if (!annotations[verseKey]) return null;
+            return annotations[verseKey].find(ann => ann.authorId === currentUser.id);
+        }
+
+        function saveAnnotations() {
+            localStorage.setItem(`quranAnnotation_data_${currentUser.id}`, JSON.stringify(annotations));
+        }
+
+        // ==================== ANNOTATIONS DISPLAY ====================
+        function updateAnnotationsList() {
+            const container = document.getElementById('annotationsList');
+            let filteredAnnotations = getAllAnnotations();
+            
+            // Apply filter
+            if (currentFilter === 'mine') {
+                filteredAnnotations = filteredAnnotations.filter(ann => ann.authorId === currentUser.id);
+            } else if (currentFilter === 'teacher') {
+                filteredAnnotations = filteredAnnotations.filter(ann => ann.authorRole === 'teacher');
+            } else if (currentFilter === 'important') {
+                filteredAnnotations = filteredAnnotations.filter(ann => ann.tags.includes('important'));
+            } else if (currentFilter === 'questions') {
+                filteredAnnotations = filteredAnnotations.filter(ann => ann.tags.includes('question'));
+            }
+            
+            if (filteredAnnotations.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div><i class="fas fa-edit"></i></div>
+                        <p>No annotations found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort by date (newest first)
+            filteredAnnotations.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            container.innerHTML = filteredAnnotations.map(item => `
+                <div class="annotation-item">
+                    <div class="annotation-header">
+                        <div class="annotation-meta">
+                            <span class="annotation-verse" onclick="goToVerse('${item.verseKey}')">
+                                ${item.verseKey}
+                            </span>
+                            <span class="annotation-author ${item.authorRole}">
+                                ${item.authorRole === 'teacher' ? '👨‍🏫 Teacher' : '👤 Student'}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--gray);">
+                            ${new Date(item.createdAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <div class="annotation-content">${item.text}</div>
+                    ${item.tags.length > 0 ? `
+                        <div class="annotation-tags">
+                            ${item.tags.map(tag => `<span class="annotation-tag">${tag}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                    ${item.authorId === currentUser.id ? `
+                        <div class="annotation-actions">
+                            <button class="btn btn-secondary" onclick="editAnnotation('${item.id}')" 
+                                    style="padding: 5px 10px; font-size: 0.85rem;">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function getAllAnnotations() {
+            const allAnnotations = [];
+            Object.keys(annotations).forEach(verseKey => {
+                annotations[verseKey].forEach(ann => {
+                    allAnnotations.push({
+                        verseKey,
+                        ...ann
+                    });
+                });
+            });
+            return allAnnotations;
+        }
+
+        function loadVerseAnnotations(verseKey) {
+            updateAnnotationsList();
+        }
+
+        function filterAnnotations(filter) {
+            currentFilter = filter;
+            
+            // Update filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            updateAnnotationsList();
+        }
+
+        function editAnnotation(annotationId) {
+            // Find the annotation
+            for (const verseKey in annotations) {
+                const annotation = annotations[verseKey].find(ann => ann.id === annotationId);
+                if (annotation) {
+                    openAnnotationForm(verseKey);
+                    break;
+                }
+            }
+        }
+
+        function viewAnnotations(verseKey, event) {
+            if (event) event.stopPropagation();
+            openAnnotationForm(verseKey);
+        }
+
+        // ==================== UTILITY FUNCTIONS ====================
+        function goToVerse(verseKey) {
+            const [surahNum, verseNum] = verseKey.split(':');
+            loadSurah(surahNum);
+            setTimeout(() => {
+                openAnnotationForm(verseKey);
+            }, 500);
+        }
+
+        function updateVerseCard(verseKey) {
+            // This would update the visual appearance of the verse card
+            // For simplicity, we'll just reload the surah
+            if (currentSurah) {
+                renderVerses();
+            }
+        }
+
+        function updateActiveSurah(surahNumber) {
+            document.querySelectorAll('.surah-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            const activeItem = Array.from(document.querySelectorAll('.surah-item')).find(item => 
+                item.textContent.includes(surahList[surahNumber - 1]?.englishName)
+            );
+            
+            if (activeItem) {
+                activeItem.classList.add('active');
+            }
+        }
+
+        function prevSurah() {
+            if (currentSurah && currentSurah.number > 1) {
+                loadSurah(currentSurah.number - 1);
+            }
+        }
+
+        function nextSurah() {
+            if (currentSurah && currentSurah.number < 114) {
+                loadSurah(currentSurah.number + 1);
+            }
+        }
+
+        function loadJuz(juzNumber) {
+            // Simplified - load first surah in juz
+            const firstSurahInJuz = surahList.find(s => getJuzForSurah(s.number) === juzNumber);
+            if (firstSurahInJuz) {
+                loadSurah(firstSurahInJuz.number);
+            }
+        }
+
+        function bookmarkVerse(verseKey, event) {
+            if (event) event.stopPropagation();
+            
+            const bookmarks = JSON.parse(localStorage.getItem('quranBookmarks') || '[]');
+            const [surahNum, verseNum] = verseKey.split(':');
+            
+            const bookmark = {
+                verseKey,
+                surah: surahNum,
+                verse: verseNum,
+                timestamp: new Date().toISOString()
+            };
+            
+            if (!bookmarks.find(b => b.verseKey === verseKey)) {
+                bookmarks.push(bookmark);
+                localStorage.setItem('quranBookmarks', JSON.stringify(bookmarks));
+                showToast('Verse bookmarked!', 'success');
+            } else {
+                showToast('Already bookmarked', 'info');
+            }
+        }
+
+        function bookmarkSurah() {
+            if (!currentSurah) return;
+            
+            const bookmarks = JSON.parse(localStorage.getItem('quranBookmarks') || '[]');
+            const bookmark = {
+                type: 'surah',
+                surah: currentSurah.number,
+                name: currentSurah.name,
+                timestamp: new Date().toISOString()
+            };
+            
+            if (!bookmarks.find(b => b.type === 'surah' && b.surah === currentSurah.number)) {
+                bookmarks.push(bookmark);
+                localStorage.setItem('quranBookmarks', JSON.stringify(bookmarks));
+                showToast('Surah bookmarked!', 'success');
+            }
+        }
+
+        function recordProgress(actionType, duration) {
+            const progress = JSON.parse(localStorage.getItem('quranProgress') || '[]');
+            const today = new Date().toISOString().split('T')[0];
+            
+            let todayProgress = progress.find(p => p.date === today);
+            if (!todayProgress) {
+                todayProgress = {
+                    date: today,
+                    annotations: 0,
+                    versesRead: 0,
+                    timeSpent: 0
+                };
+                progress.push(todayProgress);
+            }
+            
+            if (actionType === 'annotated') {
+                todayProgress.annotations++;
+            } else if (actionType === 'read') {
+                todayProgress.versesRead++;
+            } else if (actionType === 'listened') {
+                todayProgress.timeSpent += duration;
+            }
+            
+            localStorage.setItem('quranProgress', JSON.stringify(progress));
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Remove toast after 3 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
