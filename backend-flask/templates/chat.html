@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <h3>Chat with {{ other_user.username }}</h3>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+    
+    <div class="chat-messages" id="chatMessages">
+        {% for message in messages %}
+        <div class="message {% if message.sender_id == session.user_id %}message-sent{% else %}message-received{% endif %}">
+            <div class="message-header">
+                <strong>{{ message.sender_name }}</strong>
+                <small>{{ message.timestamp }}</small>
+            </div>
+            <p>{{ message.message }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="chat-input">
+        <input type="text" id="messageInput" placeholder="Type your message...">
+        <button onclick="sendMessage({{ other_user.id }})" class="btn btn-primary">Send</button>
+    </div>
+</div>
+
+<script>
+    const otherUserId = {{ other_user.id }};
+</script>
+{% endblock %}

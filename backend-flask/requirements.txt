@@ -1,0 +1,17 @@
+# Web framework
+Flask
+Flask-SocketIO
+Flask-SQLAlchemy
+python-dotenv
+
+# File upload for forms (used with FastAPI or Flask)
+python-multipart
+
+# ML/AI stack – pinned to versions that are compatible with each other
+# and with TensorFlow 2.16 (the latest stable series in late 2025)
+pandas
+numpy
+scipy
+librosa
+
+tensorflow
